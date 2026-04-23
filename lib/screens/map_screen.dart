@@ -8,6 +8,7 @@ import '../models/spot.dart';
 import 'spot_detail_screen.dart';
 import 'widgets/spot_bottom_sheet.dart';
 import 'widgets/filter_sheet.dart';
+import '../services/nominatim_service.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -23,6 +24,38 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _mapMoved = false;
   double _mapRotation = 0.0;
   LatLng _currentMapCenter = const LatLng(47.3769, 8.5417);
+
+  final _searchController = TextEditingController();
+  bool _searchActive = false;
+  List<NominatimResult> _searchResults = [];
+  bool _searching = false;
+
+  Future<void> _search(String query) async {
+    if (query.isEmpty) {
+      setState(() => _searchResults = []);
+      return;
+    }
+    setState(() => _searching = true);
+    try {
+      final results = await NominatimService.search(query);
+      setState(() => _searchResults = results);
+    } catch (e) {
+      setState(() => _searchResults = []);
+    } finally {
+      setState(() => _searching = false);
+    }
+  }
+
+  void _selectResult(NominatimResult result) {
+    _mapController.move(result.position, 13);
+    ref.read(searchLocationProvider.notifier).set(result.position);
+    setState(() {
+      _searchActive = false;
+      _searchResults = [];
+      _searchController.clear();
+    });
+    FocusScope.of(context).unfocus();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,69 +152,196 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
           // ── 2. SEARCH BAR + FILTER ──────────────────────────
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: GlutTheme.ash.withOpacity(0.95),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _searchActive
+                                  ? GlutTheme.ember
+                                  : Colors.white12,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 12),
+                              _searching
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: GlutTheme.ember,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.search,
+                                      size: 16,
+                                      color: Colors.white38,
+                                    ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchController,
+                                  style: const TextStyle(
+                                    color: GlutTheme.linen,
+                                    fontSize: 13,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Search city or area…',
+                                    hintStyle: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 13,
+                                    ),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 10,
+                                    ),
+                                  ),
+                                  onTap: () =>
+                                      setState(() => _searchActive = true),
+                                  onChanged: (v) => _search(v),
+                                ),
+                              ),
+                              if (_searchActive)
+                                GestureDetector(
+                                  onTap: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchActive = false;
+                                      _searchResults = [];
+                                    });
+                                    FocusScope.of(context).unfocus();
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(10),
+                                    child: Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: Colors.white38,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
+                      if (!_searchActive) ...[
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => showModalBottomSheet(
+                            context: context,
+                            backgroundColor: GlutTheme.coal,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(16),
+                              ),
+                            ),
+                            builder: (_) => const FilterSheet(),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: GlutTheme.ember,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'Filter',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // Search results dropdown
+                if (_searchResults.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                    child: Container(
                       decoration: BoxDecoration(
-                        color: GlutTheme.ash.withOpacity(0.92),
+                        color: GlutTheme.coal,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.white12),
                       ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.search, size: 16, color: Colors.white38),
-                          SizedBox(width: 8),
-                          Text(
-                            'Search fire spots…',
-                            style: TextStyle(
-                              color: Colors.white38,
-                              fontSize: 13,
+                      child: Column(
+                        children: _searchResults.map<Widget>((result) {
+                          final isLast = result == _searchResults.last;
+                          return GestureDetector(
+                            onTap: () => _selectResult(result),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 11,
+                              ),
+                              decoration: BoxDecoration(
+                                border: isLast
+                                    ? null
+                                    : const Border(
+                                        bottom: BorderSide(
+                                          color: Colors.white10,
+                                        ),
+                                      ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_on_outlined,
+                                    size: 14,
+                                    color: GlutTheme.ember,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          result.shortName,
+                                          style: const TextStyle(
+                                            color: GlutTheme.linen,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        Text(
+                                          result.displayName,
+                                          style: const TextStyle(
+                                            color: Colors.white38,
+                                            fontSize: 10,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          );
+                        }).toList(),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => showModalBottomSheet(
-                      context: context,
-                      backgroundColor: GlutTheme.coal,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
-                      ),
-                      builder: (_) => const FilterSheet(),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: GlutTheme.ember,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Filter',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
           ),
 
@@ -284,6 +444,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 }
 

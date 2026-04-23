@@ -1,26 +1,103 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/spot.dart';
 import '../theme.dart';
+import '../services/elevation_service.dart';
 
-class SpotDetailScreen extends StatelessWidget {
+class SpotDetailScreen extends StatefulWidget {
   final Spot spot;
   const SpotDetailScreen({super.key, required this.spot});
 
   @override
+  State<SpotDetailScreen> createState() => _SpotDetailScreenState();
+}
+
+class _SpotDetailScreenState extends State<SpotDetailScreen> {
+  int? _elevation;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadElevation();
+  }
+
+  Future<void> _loadElevation() async {
+    final elevation = await ElevationService.getElevation(
+      widget.spot.lat,
+      widget.spot.lng,
+    );
+    if (mounted) setState(() => _elevation = elevation);
+  }
+
+  void _showNavigationSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: GlutTheme.coal,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _NavigationSheet(spot: widget.spot),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final spot = widget.spot;
+
     return Scaffold(
       backgroundColor: GlutTheme.ash,
       body: Column(
         children: [
-          // Header image area
-          Container(
-            height: 200,
-            width: double.infinity,
-            color: GlutTheme.coal,
+          // ── 1. MAP HEADER ──────────────────────────────────
+          SizedBox(
+            height: 400,
             child: Stack(
               children: [
-                const Center(child: Text('🔥', style: TextStyle(fontSize: 64))),
+                FlutterMap(
+                  options: MapOptions(
+                    initialCenter: LatLng(spot.lat, spot.lng),
+                    initialZoom: 15,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.none,
+                    ),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.yourname.glut',
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: LatLng(spot.lat, spot.lng),
+                          width: 56,
+                          height: 56,
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: GlutTheme.ash,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: GlutTheme.ember,
+                                width: 2.5,
+                              ),
+                            ),
+                            child: const Center(
+                              child: Text('🔥', style: TextStyle(fontSize: 26)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                // Back + favourite buttons
                 SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -67,13 +144,14 @@ class SpotDetailScreen extends StatelessWidget {
             ),
           ),
 
-          // Content
+          // ── 2. CONTENT ─────────────────────────────────────
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Name
                   Text(
                     spot.name,
                     style: const TextStyle(
@@ -83,18 +161,106 @@ class SpotDetailScreen extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+
+                  // Distance
                   if (spot.distanceKm != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        '${spot.distanceKm!.toStringAsFixed(1)} km away',
+                        '${spot.distanceKm!.toStringAsFixed(1)} km away ✈',
                         style: const TextStyle(
                           color: Colors.white54,
                           fontSize: 12,
                         ),
                       ),
                     ),
-                  const SizedBox(height: 16),
+
+                  // Description
+                  if (spot.description != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        spot.description!,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+
+                  // GPS + Elevation
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(
+                              ClipboardData(
+                                text:
+                                    '${spot.lat.toStringAsFixed(6)}, ${spot.lng.toStringAsFixed(6)}',
+                              ),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Coordinates copied to clipboard',
+                                ),
+                                backgroundColor: GlutTheme.coal,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.gps_fixed,
+                                size: 12,
+                                color: Colors.white38,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${spot.lat.toStringAsFixed(6)}, ${spot.lng.toStringAsFixed(6)}',
+                                style: const TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.copy,
+                                size: 10,
+                                color: Colors.white24,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.terrain,
+                              size: 12,
+                              color: Colors.white38,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _elevation != null ? '${_elevation}m' : '...',
+                              style: const TextStyle(
+                                color: Colors.white38,
+                                fontSize: 11,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
 
                   // Fire ban status
                   Container(
@@ -139,6 +305,7 @@ class SpotDetailScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 16),
 
                   // Amenities
@@ -159,16 +326,21 @@ class SpotDetailScreen extends StatelessWidget {
                       if (spot.hasGrill) _Amenity('🍖 Grill'),
                       if (spot.hasShelter) _Amenity('🏕️ Shelter'),
                       if (spot.isAccessible) _Amenity('♿ Accessible'),
+                      if (spot.hasFireplace) _Amenity('🔥 Fireplace'),
+                      if (spot.isPicnicSite) _Amenity('🧺 Picnic site'),
                       if (!spot.hasWood &&
                           !spot.hasGrill &&
                           !spot.hasShelter &&
-                          !spot.isAccessible)
+                          !spot.isAccessible &&
+                          !spot.hasFireplace &&
+                          !spot.isPicnicSite)
                         const Text(
                           'No amenity info available',
                           style: TextStyle(color: Colors.white38, fontSize: 12),
                         ),
                     ],
                   ),
+
                   const SizedBox(height: 24),
 
                   // Navigate button
@@ -182,14 +354,7 @@ class SpotDetailScreen extends StatelessWidget {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onPressed: () async {
-                        final uri = Uri.parse(
-                          'https://maps.google.com/?q=${spot.lat},${spot.lng}',
-                        );
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri);
-                        }
-                      },
+                      onPressed: () => _showNavigationSheet(context),
                       child: const Text(
                         'Navigate',
                         style: TextStyle(
@@ -205,6 +370,291 @@ class SpotDetailScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── NAVIGATION SHEET ───────────────────────────────────────
+class _NavigationSheet extends StatefulWidget {
+  final Spot spot;
+  const _NavigationSheet({required this.spot});
+
+  @override
+  State<_NavigationSheet> createState() => _NavigationSheetState();
+}
+
+class _NavigationSheetState extends State<_NavigationSheet> {
+  bool _walking = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Navigate to spot',
+            style: TextStyle(
+              color: GlutTheme.linen,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Most fire spots are only reachable on foot',
+            style: TextStyle(color: Colors.white38, fontSize: 11),
+          ),
+          const SizedBox(height: 16),
+
+          // Walking / Driving toggle
+          Container(
+            decoration: BoxDecoration(
+              color: GlutTheme.ash,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                _ModeTab(
+                  label: 'Walking',
+                  icon: Icons.directions_walk,
+                  selected: _walking,
+                  onTap: () => setState(() => _walking = true),
+                ),
+                _ModeTab(
+                  label: 'Driving',
+                  icon: Icons.directions_car_outlined,
+                  selected: !_walking,
+                  onTap: () => setState(() => _walking = false),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Swisstopo — walking only
+          if (_walking) ...[
+            _NavOption(
+              label: 'Swisstopo',
+              sublabel: 'Recommended · Swiss hiking trails',
+              icon: Icons.terrain_outlined,
+              onTap: () async {
+                Navigator.pop(context);
+                final nativeUri = Uri.parse(
+                  'ch.admin.swisstopo://map?lat=${widget.spot.lat}&lon=${widget.spot.lng}&zoom=12',
+                );
+                final webUri = Uri.parse(
+                  'https://map.geo.admin.ch/?E=${widget.spot.lng}&N=${widget.spot.lat}&zoom=12'
+                  '&layers=ch.swisstopo.swisstlm3d-wanderwege'
+                  '&crosshair=circle',
+                );
+                if (await canLaunchUrl(nativeUri)) {
+                  await launchUrl(
+                    nativeUri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                } else {
+                  await launchUrl(webUri, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+            const Divider(color: Colors.white10),
+          ],
+
+          // Google Maps
+          _NavOption(
+            label: 'Google Maps',
+            sublabel: _walking ? 'Walking directions' : 'Driving directions',
+            icon: Icons.map_outlined,
+            onTap: () async {
+              Navigator.pop(context);
+              final mode = _walking ? 'walking' : 'driving';
+              final uri = Uri.parse(
+                'https://maps.google.com/?q=${widget.spot.lat},${widget.spot.lng}&travelmode=$mode',
+              );
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            },
+          ),
+          const Divider(color: Colors.white10),
+
+          // Apple Maps
+          _NavOption(
+            label: 'Apple Maps',
+            sublabel: _walking ? 'Walking directions' : 'Driving directions',
+            icon: Icons.apple,
+            onTap: () async {
+              Navigator.pop(context);
+              final mode = _walking ? 'w' : 'd';
+              final uri = Uri.parse(
+                'https://maps.apple.com/?q=${widget.spot.lat},${widget.spot.lng}&dirflg=$mode',
+              );
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            },
+          ),
+          const Divider(color: Colors.white10),
+
+          // Waze — driving only
+          if (!_walking) ...[
+            _NavOption(
+              label: 'Waze',
+              sublabel: 'Driving directions',
+              icon: Icons.navigation_outlined,
+              onTap: () async {
+                Navigator.pop(context);
+                final uri = Uri.parse(
+                  'https://waze.com/ul?ll=${widget.spot.lat},${widget.spot.lng}&navigate=yes',
+                );
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+            ),
+            const Divider(color: Colors.white10),
+          ],
+
+          // Street View
+          _NavOption(
+            label: 'View on Google Maps',
+            sublabel: 'Street View & satellite',
+            icon: Icons.streetview,
+            onTap: () async {
+              Navigator.pop(context);
+              final uri = Uri.parse(
+                'https://www.google.com/maps/@${widget.spot.lat},${widget.spot.lng},3a,75y,90t/data=!3m1!1e1',
+              );
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            },
+          ),
+          const Divider(color: Colors.white10),
+
+          // Copy coordinates
+          _NavOption(
+            label: 'Copy coordinates',
+            sublabel:
+                '${widget.spot.lat.toStringAsFixed(6)}, ${widget.spot.lng.toStringAsFixed(6)}',
+            icon: Icons.copy_outlined,
+            onTap: () {
+              Navigator.pop(context);
+              Clipboard.setData(
+                ClipboardData(
+                  text:
+                      '${widget.spot.lat.toStringAsFixed(6)}, ${widget.spot.lng.toStringAsFixed(6)}',
+                ),
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Coordinates copied'),
+                  backgroundColor: GlutTheme.coal,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeTab extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ModeTab({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? GlutTheme.ember : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? Colors.white : Colors.white38,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : Colors.white38,
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavOption extends StatelessWidget {
+  final String label;
+  final String? sublabel;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _NavOption({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.sublabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: GlutTheme.ember, size: 20),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: GlutTheme.linen,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (sublabel != null)
+                    Text(
+                      sublabel!,
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 10,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white24, size: 18),
+          ],
+        ),
       ),
     );
   }
