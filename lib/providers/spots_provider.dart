@@ -1,8 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/spot.dart';
 import '../services/overpass_service.dart';
-import 'package:latlong2/latlong.dart';
 
 final locationProvider = FutureProvider<Position>((ref) async {
   bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -16,7 +17,13 @@ final locationProvider = FutureProvider<Position>((ref) async {
     }
   }
 
-  return await Geolocator.getCurrentPosition();
+  if (permission == LocationPermission.deniedForever) {
+    throw Exception('Location permission permanently denied');
+  }
+
+  return await Geolocator.getCurrentPosition(
+    desiredAccuracy: LocationAccuracy.medium,
+  );
 });
 
 final searchLocationProvider = NotifierProvider<SearchLocation, LatLng?>(
@@ -33,7 +40,6 @@ final spotsProvider = FutureProvider<List<Spot>>((ref) async {
   final searchLocation = ref.watch(searchLocationProvider);
   final userPosition = await ref.watch(locationProvider.future);
 
-  // Fetch from search location if set, otherwise user position
   final fetchLat = searchLocation?.latitude ?? userPosition.latitude;
   final fetchLng = searchLocation?.longitude ?? userPosition.longitude;
 
@@ -42,21 +48,19 @@ final spotsProvider = FutureProvider<List<Spot>>((ref) async {
   final spots = await OverpassService.fetchSpots(
     lat: fetchLat,
     lng: fetchLng,
-    radiusMeters: 15000,
+    radiusMeters: 5000,
   );
 
-  // ALWAYS use real user position for distance — never search center
   final spotsWithDistance = spots.map((spot) {
     final distanceMeters = Geolocator.distanceBetween(
-      userPosition.latitude, // real GPS
-      userPosition.longitude, // real GPS
+      userPosition.latitude,
+      userPosition.longitude,
       spot.lat,
       spot.lng,
     );
     return spot.copyWith(distanceKm: distanceMeters / 1000);
   }).toList();
 
-  // Sort by distance from user
   spotsWithDistance.sort(
     (a, b) => (a.distanceKm ?? 0).compareTo(b.distanceKm ?? 0),
   );
@@ -64,7 +68,6 @@ final spotsProvider = FutureProvider<List<Spot>>((ref) async {
   return spotsWithDistance;
 });
 
-// Filters
 class FilterRadius extends Notifier<double> {
   @override
   double build() => 5000;
@@ -81,9 +84,7 @@ class FilterBool extends Notifier<bool> {
 final filterRadiusProvider = NotifierProvider<FilterRadius, double>(
   FilterRadius.new,
 );
-
 final filterWoodProvider = NotifierProvider<FilterBool, bool>(FilterBool.new);
-
 final filterGrillProvider = NotifierProvider<FilterBool, bool>(FilterBool.new);
 
 final filteredSpotsProvider = Provider<AsyncValue<List<Spot>>>((ref) {
@@ -99,3 +100,36 @@ final filteredSpotsProvider = Provider<AsyncValue<List<Spot>>>((ref) {
     }).toList(),
   );
 });
+
+class FavouritesNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    _load();
+    return {};
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList('favourites') ?? [];
+    state = ids.toSet();
+  }
+
+  Future<void> toggle(String spotId) async {
+    print('🔥 Toggle called for spot: $spotId');
+    print('🔥 Current favourites: $state');
+    final prefs = await SharedPreferences.getInstance();
+    if (state.contains(spotId)) {
+      state = {...state}..remove(spotId);
+    } else {
+      state = {...state, spotId};
+    }
+    await prefs.setStringList('favourites', state.toList());
+    print('🔥 New favourites: $state');
+  }
+
+  bool isFavourite(String spotId) => state.contains(spotId);
+}
+
+final favouritesProvider = NotifierProvider<FavouritesNotifier, Set<String>>(
+  FavouritesNotifier.new,
+);

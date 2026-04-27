@@ -42,6 +42,11 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   riverpod: ^3.2.1
+  shared_preferences: ^2.2.0
+  image_picker: ^1.0.7
+  supabase_flutter: ^2.3.0
+  flutter_image_compress: ^2.1.0
+  uuid: ^4.3.3
   
 
 dev_dependencies:

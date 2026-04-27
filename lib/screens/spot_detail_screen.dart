@@ -1,21 +1,24 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/spot.dart';
-import '../theme.dart';
+import '../providers/spots_provider.dart';
 import '../services/elevation_service.dart';
+import '../theme.dart';
 
-class SpotDetailScreen extends StatefulWidget {
+class SpotDetailScreen extends ConsumerStatefulWidget {
   final Spot spot;
   const SpotDetailScreen({super.key, required this.spot});
 
   @override
-  State<SpotDetailScreen> createState() => _SpotDetailScreenState();
+  ConsumerState<SpotDetailScreen> createState() => _SpotDetailScreenState();
 }
 
-class _SpotDetailScreenState extends State<SpotDetailScreen> {
+class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   int? _elevation;
 
   @override
@@ -46,6 +49,7 @@ class _SpotDetailScreenState extends State<SpotDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final spot = widget.spot;
+    final isFavourite = ref.watch(favouritesProvider).contains(spot.id);
 
     return Scaffold(
       backgroundColor: GlutTheme.ash,
@@ -53,7 +57,7 @@ class _SpotDetailScreenState extends State<SpotDetailScreen> {
         children: [
           // ── 1. MAP HEADER ──────────────────────────────────
           SizedBox(
-            height: 400,
+            height: 200,
             child: Stack(
               children: [
                 FlutterMap(
@@ -69,6 +73,7 @@ class _SpotDetailScreenState extends State<SpotDetailScreen> {
                       urlTemplate:
                           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.yourname.glut',
+                      maxZoom: 19,
                     ),
                     MarkerLayer(
                       markers: [
@@ -104,11 +109,12 @@ class _SpotDetailScreenState extends State<SpotDetailScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // Back button
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
                           child: Container(
-                            width: 32,
-                            height: 32,
+                            width: 44,
+                            height: 44,
                             decoration: BoxDecoration(
                               color: Colors.black54,
                               borderRadius: BorderRadius.circular(50),
@@ -116,23 +122,31 @@ class _SpotDetailScreenState extends State<SpotDetailScreen> {
                             child: const Icon(
                               Icons.arrow_back,
                               color: Colors.white,
-                              size: 16,
+                              size: 20,
                             ),
                           ),
                         ),
+
+                        // Favourite button
                         GestureDetector(
-                          onTap: () {},
+                          onTap: () => ref
+                              .read(favouritesProvider.notifier)
+                              .toggle(spot.id),
                           child: Container(
-                            width: 32,
-                            height: 32,
+                            width: 44,
+                            height: 44,
                             decoration: BoxDecoration(
                               color: Colors.black54,
                               borderRadius: BorderRadius.circular(50),
                             ),
-                            child: const Icon(
-                              Icons.favorite_border,
-                              color: Colors.white,
-                              size: 16,
+                            child: Icon(
+                              isFavourite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: isFavourite
+                                  ? GlutTheme.ember
+                                  : Colors.white,
+                              size: 20,
                             ),
                           ),
                         ),
@@ -387,171 +401,209 @@ class _NavigationSheet extends StatefulWidget {
 class _NavigationSheetState extends State<_NavigationSheet> {
   bool _walking = true;
 
+  bool get _isInSwitzerland {
+    return widget.spot.lat >= 45.8 &&
+        widget.spot.lat <= 47.8 &&
+        widget.spot.lng >= 5.9 &&
+        widget.spot.lng <= 10.5;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Navigate to spot',
-            style: TextStyle(
-              color: GlutTheme.linen,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          MediaQuery.of(context).viewInsets.bottom + 32,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Navigate to spot',
+              style: TextStyle(
+                color: GlutTheme.linen,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Most fire spots are only reachable on foot',
-            style: TextStyle(color: Colors.white38, fontSize: 11),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 4),
+            const Text(
+              'Most fire spots are only reachable on foot',
+              style: TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+            const SizedBox(height: 16),
 
-          // Walking / Driving toggle
-          Container(
-            decoration: BoxDecoration(
-              color: GlutTheme.ash,
-              borderRadius: BorderRadius.circular(10),
+            // Walking / Driving toggle
+            Container(
+              decoration: BoxDecoration(
+                color: GlutTheme.ash,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  _ModeTab(
+                    label: 'Walking',
+                    icon: Icons.directions_walk,
+                    selected: _walking,
+                    onTap: () => setState(() => _walking = true),
+                  ),
+                  _ModeTab(
+                    label: 'Driving',
+                    icon: Icons.directions_car_outlined,
+                    selected: !_walking,
+                    onTap: () => setState(() => _walking = false),
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                _ModeTab(
-                  label: 'Walking',
-                  icon: Icons.directions_walk,
-                  selected: _walking,
-                  onTap: () => setState(() => _walking = true),
-                ),
-                _ModeTab(
-                  label: 'Driving',
-                  icon: Icons.directions_car_outlined,
-                  selected: !_walking,
-                  onTap: () => setState(() => _walking = false),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Swisstopo — walking only
-          if (_walking) ...[
-            _NavOption(
-              label: 'Swisstopo',
-              sublabel: 'Recommended · Swiss hiking trails',
-              icon: Icons.terrain_outlined,
-              onTap: () async {
-                Navigator.pop(context);
-                final nativeUri = Uri.parse(
-                  'ch.admin.swisstopo://map?lat=${widget.spot.lat}&lon=${widget.spot.lng}&zoom=12',
-                );
-                final webUri = Uri.parse(
-                  'https://map.geo.admin.ch/?E=${widget.spot.lng}&N=${widget.spot.lat}&zoom=12'
-                  '&layers=ch.swisstopo.swisstlm3d-wanderwege'
-                  '&crosshair=circle',
-                );
-                if (await canLaunchUrl(nativeUri)) {
-                  await launchUrl(
-                    nativeUri,
-                    mode: LaunchMode.externalApplication,
+            // Swisstopo — walking + Switzerland only
+            if (_walking && _isInSwitzerland) ...[
+              _NavOption(
+                label: 'Swisstopo',
+                sublabel: 'Recommended · Swiss hiking trails',
+                icon: Icons.terrain_outlined,
+                onTap: () async {
+                  Navigator.pop(context);
+                  final nativeUri = Uri.parse(
+                    'ch.admin.swisstopo://map?lat=${widget.spot.lat}&lon=${widget.spot.lng}&zoom=12',
                   );
-                } else {
-                  await launchUrl(webUri, mode: LaunchMode.externalApplication);
-                }
-              },
-            ),
-            const Divider(color: Colors.white10),
-          ],
+                  final webUri = Uri.parse(
+                    'https://map.geo.admin.ch/?E=${widget.spot.lng}&N=${widget.spot.lat}&zoom=12'
+                    '&layers=ch.swisstopo.swisstlm3d-wanderwege'
+                    '&crosshair=circle',
+                  );
+                  if (await canLaunchUrl(nativeUri)) {
+                    await launchUrl(
+                      nativeUri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  } else {
+                    await launchUrl(
+                      webUri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  }
+                },
+              ),
+              const Divider(color: Colors.white10),
+            ],
 
-          // Google Maps
-          _NavOption(
-            label: 'Google Maps',
-            sublabel: _walking ? 'Walking directions' : 'Driving directions',
-            icon: Icons.map_outlined,
-            onTap: () async {
-              Navigator.pop(context);
-              final mode = _walking ? 'walking' : 'driving';
-              final uri = Uri.parse(
-                'https://maps.google.com/?q=${widget.spot.lat},${widget.spot.lng}&travelmode=$mode',
-              );
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            },
-          ),
-          const Divider(color: Colors.white10),
+            // Komoot — walking + outside Switzerland
+            if (_walking && !_isInSwitzerland) ...[
+              _NavOption(
+                label: 'Komoot',
+                sublabel: 'Recommended · Hiking trails',
+                icon: Icons.terrain_outlined,
+                onTap: () async {
+                  Navigator.pop(context);
+                  final uri = Uri.parse(
+                    'https://www.komoot.com/plan/@${widget.spot.lat},${widget.spot.lng},12z',
+                  );
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
+              ),
+              const Divider(color: Colors.white10),
+            ],
 
-          // Apple Maps
-          _NavOption(
-            label: 'Apple Maps',
-            sublabel: _walking ? 'Walking directions' : 'Driving directions',
-            icon: Icons.apple,
-            onTap: () async {
-              Navigator.pop(context);
-              final mode = _walking ? 'w' : 'd';
-              final uri = Uri.parse(
-                'https://maps.apple.com/?q=${widget.spot.lat},${widget.spot.lng}&dirflg=$mode',
-              );
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            },
-          ),
-          const Divider(color: Colors.white10),
-
-          // Waze — driving only
-          if (!_walking) ...[
+            // Google Maps
             _NavOption(
-              label: 'Waze',
-              sublabel: 'Driving directions',
-              icon: Icons.navigation_outlined,
+              label: 'Google Maps',
+              sublabel: _walking ? 'Walking directions' : 'Driving directions',
+              icon: Icons.map_outlined,
               onTap: () async {
                 Navigator.pop(context);
+                final mode = _walking ? 'walking' : 'driving';
                 final uri = Uri.parse(
-                  'https://waze.com/ul?ll=${widget.spot.lat},${widget.spot.lng}&navigate=yes',
+                  'https://maps.google.com/?q=${widget.spot.lat},${widget.spot.lng}&travelmode=$mode',
                 );
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
               },
             ),
             const Divider(color: Colors.white10),
+
+            // Apple Maps — iOS only
+            if (Platform.isIOS) ...[
+              _NavOption(
+                label: 'Apple Maps',
+                sublabel: _walking
+                    ? 'Walking directions'
+                    : 'Driving directions',
+                icon: Icons.apple,
+                onTap: () async {
+                  Navigator.pop(context);
+                  final mode = _walking ? 'w' : 'd';
+                  final uri = Uri.parse(
+                    'https://maps.apple.com/?q=${widget.spot.lat},${widget.spot.lng}&dirflg=$mode',
+                  );
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
+              ),
+              const Divider(color: Colors.white10),
+            ],
+
+            // Waze — driving only
+            if (!_walking) ...[
+              _NavOption(
+                label: 'Waze',
+                sublabel: 'Driving directions',
+                icon: Icons.navigation_outlined,
+                onTap: () async {
+                  Navigator.pop(context);
+                  final uri = Uri.parse(
+                    'https://waze.com/ul?ll=${widget.spot.lat},${widget.spot.lng}&navigate=yes',
+                  );
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
+              ),
+              const Divider(color: Colors.white10),
+            ],
+
+            // Street View
+            _NavOption(
+              label: 'View on Google Maps',
+              sublabel: 'Street View & satellite',
+              icon: Icons.streetview,
+              onTap: () async {
+                Navigator.pop(context);
+                final uri = Uri.parse(
+                  'https://www.google.com/maps/@${widget.spot.lat},${widget.spot.lng},3a,75y,90t/data=!3m1!1e1',
+                );
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+            ),
+            const Divider(color: Colors.white10),
+
+            // Copy coordinates
+            _NavOption(
+              label: 'Copy coordinates',
+              sublabel:
+                  '${widget.spot.lat.toStringAsFixed(6)}, ${widget.spot.lng.toStringAsFixed(6)}',
+              icon: Icons.copy_outlined,
+              onTap: () {
+                Navigator.pop(context);
+                Clipboard.setData(
+                  ClipboardData(
+                    text:
+                        '${widget.spot.lat.toStringAsFixed(6)}, ${widget.spot.lng.toStringAsFixed(6)}',
+                  ),
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Coordinates copied'),
+                    backgroundColor: GlutTheme.coal,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
           ],
-
-          // Street View
-          _NavOption(
-            label: 'View on Google Maps',
-            sublabel: 'Street View & satellite',
-            icon: Icons.streetview,
-            onTap: () async {
-              Navigator.pop(context);
-              final uri = Uri.parse(
-                'https://www.google.com/maps/@${widget.spot.lat},${widget.spot.lng},3a,75y,90t/data=!3m1!1e1',
-              );
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            },
-          ),
-          const Divider(color: Colors.white10),
-
-          // Copy coordinates
-          _NavOption(
-            label: 'Copy coordinates',
-            sublabel:
-                '${widget.spot.lat.toStringAsFixed(6)}, ${widget.spot.lng.toStringAsFixed(6)}',
-            icon: Icons.copy_outlined,
-            onTap: () {
-              Navigator.pop(context);
-              Clipboard.setData(
-                ClipboardData(
-                  text:
-                      '${widget.spot.lat.toStringAsFixed(6)}, ${widget.spot.lng.toStringAsFixed(6)}',
-                ),
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Coordinates copied'),
-                  backgroundColor: GlutTheme.coal,
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-          ),
-        ],
+        ),
       ),
     );
   }
