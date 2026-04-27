@@ -470,14 +470,27 @@ class _NavigationSheetState extends State<_NavigationSheet> {
                 icon: Icons.terrain_outlined,
                 onTap: () async {
                   Navigator.pop(context);
+
                   final nativeUri = Uri.parse(
                     'ch.admin.swisstopo://map?lat=${widget.spot.lat}&lon=${widget.spot.lng}&zoom=12',
                   );
-                  final webUri = Uri.parse(
-                    'https://map.geo.admin.ch/?E=${widget.spot.lng}&N=${widget.spot.lat}&zoom=12'
-                    '&layers=ch.swisstopo.swisstlm3d-wanderwege'
-                    '&crosshair=circle',
+
+                  // Convert to LV95
+                  final lv95 = CoordinateService.wgs84ToLV95(
+                    widget.spot.lat,
+                    widget.spot.lng,
                   );
+
+                  final webUri = Uri.parse(
+                    'https://map.geo.admin.ch/#/map'
+                    '?lang=de'
+                    '&center=${lv95['e']!.toInt()},${lv95['n']!.toInt()}'
+                    '&z=12'
+                    '&bgLayer=ch.swisstopo.pixelkarte-farbe'
+                    '&layers=ch.swisstopo.swisstlm3d-wanderwege'
+                    '&crosshair=point',
+                  );
+
                   if (await canLaunchUrl(nativeUri)) {
                     await launchUrl(
                       nativeUri,
@@ -519,12 +532,28 @@ class _NavigationSheetState extends State<_NavigationSheet> {
               onTap: () async {
                 Navigator.pop(context);
                 final mode = _walking ? 'walking' : 'driving';
-                final uri = Uri.parse(
-                  'https://maps.google.com/?q=${widget.spot.lat},${widget.spot.lng}&travelmode=$mode',
+
+                // Try native Google Maps app first
+                final nativeUri = Uri.parse(
+                  'comgooglemaps://?daddr=${widget.spot.lat},${widget.spot.lng}&directionsmode=$mode',
                 );
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+                // Fall back to web
+                final webUri = Uri.parse(
+                  'https://maps.google.com/maps?daddr=${widget.spot.lat},${widget.spot.lng}&dirflg=${_walking ? 'w' : 'd'}',
+                );
+
+                if (await canLaunchUrl(nativeUri)) {
+                  await launchUrl(
+                    nativeUri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                } else {
+                  await launchUrl(webUri, mode: LaunchMode.externalApplication);
+                }
               },
             ),
+
             const Divider(color: Colors.white10),
 
             // Apple Maps — iOS only
