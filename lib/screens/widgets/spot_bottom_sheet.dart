@@ -8,11 +8,15 @@ import 'spot_card.dart';
 class SpotBottomSheet extends ConsumerStatefulWidget {
   final Function(Spot) onSpotTap;
   final Spot? selectedSpot;
+  final ScrollController? scrollController;
+  final DraggableScrollableController? sheetController;
 
   const SpotBottomSheet({
     super.key,
     required this.onSpotTap,
     this.selectedSpot,
+    this.scrollController,
+    this.sheetController,
   });
 
   @override
@@ -64,21 +68,56 @@ class _SpotBottomSheetState extends ConsumerState<SpotBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final spots = ref.watch(filteredSpotsProvider);
+    // Use external controller from DraggableScrollableSheet
+    // or fall back to internal one
+    final controller = widget.scrollController ?? _scrollController;
 
-    return DraggableScrollableSheet(
-      initialChildSize: 1.0,
-      minChildSize: 1.0,
-      maxChildSize: 1.0,
-      builder: (context, _) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: GlutTheme.ash,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
+    return Container(
+      decoration: const BoxDecoration(
+        color: GlutTheme.ash,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onVerticalDragUpdate: (details) {
+              if (widget.sheetController == null) return;
+              final size = widget.sheetController!.size;
+              final delta =
+                  -details.primaryDelta! / MediaQuery.of(context).size.height;
+              final newSize = (size + delta).clamp(0.08, 0.85);
+              widget.sheetController!.jumpTo(newSize);
+            },
+            onVerticalDragEnd: (details) {
+              if (widget.sheetController == null) return;
+              final size = widget.sheetController!.size;
+              // Snap to nearest snap point
+              if (size < 0.18) {
+                widget.sheetController!.animateTo(
+                  0.08,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                );
+              } else if (size < 0.55) {
+                widget.sheetController!.animateTo(
+                  0.28,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                );
+              } else {
+                widget.sheetController!.animateTo(
+                  0.85,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                );
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(
                 child: Container(
                   width: 32,
                   height: 3,
@@ -88,54 +127,50 @@ class _SpotBottomSheetState extends ConsumerState<SpotBottomSheet> {
                   ),
                 ),
               ),
-              spots.when(
-                data: (list) => Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '${list.length} spots nearby',
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                ),
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
-              ),
-              Expanded(
-                child: spots.when(
-                  data: (list) => ListView.builder(
-                    controller: _scrollController,
-                    itemExtent: _itemExtent,
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 32),
-                    itemCount: list.length,
-                    itemBuilder: (_, i) => SpotCard(
-                      spot: list[i],
-                      highlighted: widget.selectedSpot?.id == list[i].id,
-                      onTap: () => widget.onSpotTap(list[i]),
-                    ),
-                  ),
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(color: GlutTheme.ember),
-                  ),
-                  error: (e, _) => Center(
-                    child: Text(
-                      'Error: $e',
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+          // Count
+          spots.when(
+            data: (list) => Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${list.length} spots nearby',
+                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                ),
+              ),
+            ),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+          // List
+          Expanded(
+            child: spots.when(
+              data: (list) => ListView.builder(
+                controller: controller,
+                itemExtent: _itemExtent,
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 32),
+                itemCount: list.length,
+                itemBuilder: (_, i) => SpotCard(
+                  spot: list[i],
+                  highlighted: widget.selectedSpot?.id == list[i].id,
+                  onTap: () => widget.onSpotTap(list[i]),
+                ),
+              ),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: GlutTheme.ember),
+              ),
+              error: (e, _) => Center(
+                child: Text(
+                  'Error: $e',
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

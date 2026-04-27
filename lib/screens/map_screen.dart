@@ -30,6 +30,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   List<NominatimResult> _searchResults = [];
   bool _searching = false;
 
+  final _sheetController = DraggableScrollableController();
+
   Future<void> _search(String query) async {
     if (query.isEmpty) {
       setState(() => _searchResults = []);
@@ -448,18 +450,26 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
 
           // ── 5. BOTTOM SHEET ─────────────────────────────────
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: MediaQuery.of(context).size.height * 0.35,
-            child: SpotBottomSheet(
-              selectedSpot: _selectedSpot,
-              onSpotTap: (spot) => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => SpotDetailScreen(spot: spot)),
-              ),
-            ),
+          DraggableScrollableSheet(
+            controller: _sheetController,
+            initialChildSize: 0.35,
+            minChildSize: 0.08,
+            maxChildSize: 0.85,
+            snap: true,
+            snapSizes: const [0.08, 0.35, 0.85],
+            builder: (context, scrollController) {
+              return SpotBottomSheet(
+                selectedSpot: _selectedSpot,
+                scrollController: scrollController,
+                sheetController: _sheetController,
+                onSpotTap: (spot) => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SpotDetailScreen(spot: spot),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -468,6 +478,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   void dispose() {
+    _sheetController.dispose();
     _searchController.dispose();
     super.dispose();
   }

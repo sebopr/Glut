@@ -9,10 +9,12 @@ import '../models/spot.dart';
 import '../providers/spots_provider.dart';
 import '../services/elevation_service.dart';
 import '../theme.dart';
+import '../services/weather_service.dart';
 
 class SpotDetailScreen extends ConsumerStatefulWidget {
   final Spot spot;
-  const SpotDetailScreen({super.key, required this.spot});
+
+  SpotDetailScreen({super.key, required this.spot});
 
   @override
   ConsumerState<SpotDetailScreen> createState() => _SpotDetailScreenState();
@@ -21,18 +23,34 @@ class SpotDetailScreen extends ConsumerStatefulWidget {
 class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   int? _elevation;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadElevation();
-  }
-
   Future<void> _loadElevation() async {
+  WeatherData? _weather;
+  bool _weatherLoading = true;
     final elevation = await ElevationService.getElevation(
       widget.spot.lat,
       widget.spot.lng,
     );
     if (mounted) setState(() => _elevation = elevation);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadElevation();
+    _loadWeather();
+  }
+
+  Future<void> _loadWeather() async {
+    final weather = await WeatherService.getWeather(
+      widget.spot.lat,
+      widget.spot.lng,
+    );
+    if (mounted) {
+      setState(() {
+        _weather = weather;
+        _weatherLoading = false;
+      });
+    }
   }
 
   void _showNavigationSheet(BuildContext context) {
@@ -275,6 +293,116 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                   ),
 
                   const SizedBox(height: 20),
+
+                  const SizedBox(height: 16),
+
+                  // Weather
+                  _weatherLoading
+                      ? Container(
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: GlutTheme.coal,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white10),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: GlutTheme.ember,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        )
+                      : _weather != null
+                      ? Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: GlutTheme.coal,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white10),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    _weather!.emoji,
+                                    style: const TextStyle(fontSize: 28),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${_weather!.temperature.toStringAsFixed(1)}°C  ·  ${_weather!.description}',
+                                          style: const TextStyle(
+                                            color: GlutTheme.linen,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Wind ${_weather!.windSpeed.toStringAsFixed(0)} km/h  ·  Humidity ${_weather!.humidity}%',
+                                          style: const TextStyle(
+                                            color: Colors.white38,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _weather!.goodForFire
+                                      ? GlutTheme.moss.withOpacity(0.1)
+                                      : Colors.orange.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: _weather!.goodForFire
+                                        ? GlutTheme.moss.withOpacity(0.3)
+                                        : Colors.orange.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _weather!.goodForFire
+                                          ? Icons.check_circle_outline
+                                          : Icons.warning_amber_outlined,
+                                      size: 14,
+                                      color: _weather!.goodForFire
+                                          ? GlutTheme.moss
+                                          : Colors.orange,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _weather!.fireAdvice,
+                                      style: TextStyle(
+                                        color: _weather!.goodForFire
+                                            ? GlutTheme.moss
+                                            : Colors.orange,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+
+                  const SizedBox(height: 16),
 
                   // Fire ban status
                   Container(
@@ -566,11 +694,19 @@ class _NavigationSheetState extends State<_NavigationSheet> {
                 icon: Icons.apple,
                 onTap: () async {
                   Navigator.pop(context);
-                  final mode = _walking ? 'w' : 'd';
-                  final uri = Uri.parse(
-                    'https://maps.apple.com/?q=${widget.spot.lat},${widget.spot.lng}&dirflg=$mode',
-                  );
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  final Uri uri;
+                  if (_walking) {
+                    uri = Uri.parse(
+                      'maps://?daddr=${widget.spot.lat},${widget.spot.lng}&dirflg=w&t=m',
+                    );
+                  } else {
+                    uri = Uri.parse(
+                      'maps://?daddr=${widget.spot.lat},${widget.spot.lng}&dirflg=d&t=m',
+                    );
+                  }
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
                 },
               ),
               const Divider(color: Colors.white10),
@@ -623,10 +759,33 @@ class _NavigationSheetState extends State<_NavigationSheet> {
                   ),
                 );
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Coordinates copied'),
+                  SnackBar(
+                    content: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Text(
+                          'Coordinates copied',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(
+                          Icons.check_circle,
+                          color: GlutTheme.moss,
+                          size: 18,
+                        ),
+                      ],
+                    ),
                     backgroundColor: GlutTheme.coal,
-                    duration: Duration(seconds: 2),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                   ),
                 );
               },
