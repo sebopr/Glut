@@ -10,6 +10,9 @@ import '../providers/spots_provider.dart';
 import '../services/elevation_service.dart';
 import '../theme.dart';
 import '../services/weather_service.dart';
+import 'widgets/spot_photos.dart';
+import '../services/coordinate_service.dart';
+import '../services/share_service.dart';
 
 class SpotDetailScreen extends ConsumerStatefulWidget {
   final Spot spot;
@@ -22,10 +25,10 @@ class SpotDetailScreen extends ConsumerStatefulWidget {
 
 class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   int? _elevation;
-
-  Future<void> _loadElevation() async {
   WeatherData? _weather;
   bool _weatherLoading = true;
+
+  Future<void> _loadElevation() async {
     final elevation = await ElevationService.getElevation(
       widget.spot.lat,
       widget.spot.lng,
@@ -144,29 +147,49 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                             ),
                           ),
                         ),
-
-                        // Favourite button
-                        GestureDetector(
-                          onTap: () => ref
-                              .read(favouritesProvider.notifier)
-                              .toggle(spot.id),
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(50),
+                        // Share + Favourite on the right
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () => ShareService.shareSpot(spot),
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                                child: const Icon(
+                                  Icons.share_outlined,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
                             ),
-                            child: Icon(
-                              isFavourite
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              color: isFavourite
-                                  ? GlutTheme.ember
-                                  : Colors.white,
-                              size: 20,
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => ref
+                                  .read(favouritesProvider.notifier)
+                                  .toggle(spot.id),
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                                child: Icon(
+                                  isFavourite
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: isFavourite
+                                      ? GlutTheme.ember
+                                      : Colors.white,
+                                  size: 20,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
@@ -485,6 +508,13 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
                   const SizedBox(height: 24),
 
+                  const SizedBox(height: 16),
+
+                  // Photos
+                  SpotPhotos(spotId: spot.id),
+
+                  const SizedBox(height: 24),
+
                   // Navigate button
                   SizedBox(
                     width: double.infinity,
@@ -501,6 +531,36 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                         'Navigate',
                         style: TextStyle(
                           color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Share button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white24),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: () => ShareService.shareSpot(spot),
+                      icon: const Icon(
+                        Icons.share_outlined,
+                        color: Colors.white54,
+                        size: 18,
+                      ),
+                      label: const Text(
+                        'Share this spot',
+                        style: TextStyle(
+                          color: Colors.white54,
                           fontWeight: FontWeight.w500,
                           fontSize: 15,
                         ),

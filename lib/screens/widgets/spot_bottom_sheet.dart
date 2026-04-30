@@ -10,6 +10,7 @@ class SpotBottomSheet extends ConsumerStatefulWidget {
   final Spot? selectedSpot;
   final ScrollController? scrollController;
   final DraggableScrollableController? sheetController;
+  final bool listScrollable;
 
   const SpotBottomSheet({
     super.key,
@@ -17,6 +18,7 @@ class SpotBottomSheet extends ConsumerStatefulWidget {
     this.selectedSpot,
     this.scrollController,
     this.sheetController,
+    this.listScrollable = true,
   });
 
   @override
@@ -40,22 +42,38 @@ class _SpotBottomSheetState extends ConsumerState<SpotBottomSheet> {
 
   void _scrollToSelected() {
     if (widget.selectedSpot == null) return;
-    if (!_scrollController.hasClients) return;
+
+    // Expand sheet to middle if collapsed
+    if (widget.sheetController != null && widget.sheetController!.size < 0.42) {
+      widget.sheetController!.animateTo(
+        0.42,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+
+    // Use whichever controller is attached to the ListView
+    final controller = widget.scrollController ?? _scrollController;
 
     final spots = ref.read(filteredSpotsProvider);
     spots.whenData((list) {
       final index = list.indexWhere((s) => s.id == widget.selectedSpot!.id);
       if (index == -1) return;
 
-      final viewportHeight = _scrollController.position.viewportDimension;
-      final offset =
-          (_itemExtent * index) - (viewportHeight / 2) + (_itemExtent / 2);
+      // Wait for sheet animation to finish before scrolling
+      Future.delayed(const Duration(milliseconds: 350), () {
+        if (!controller.hasClients) return;
 
-      _scrollController.animateTo(
-        offset.clamp(0.0, _scrollController.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeOut,
-      );
+        final viewportHeight = controller.position.viewportDimension;
+        final offset =
+            (_itemExtent * index) - (viewportHeight / 2) + (_itemExtent / 2);
+
+        controller.animateTo(
+          offset.clamp(0.0, controller.position.maxScrollExtent),
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOut,
+        );
+      });
     });
   }
 
@@ -68,9 +86,8 @@ class _SpotBottomSheetState extends ConsumerState<SpotBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final spots = ref.watch(filteredSpotsProvider);
-    // Use external controller from DraggableScrollableSheet
-    // or fall back to internal one
-    final controller = widget.scrollController ?? _scrollController;
+    // Use external scroll controller or fall back to internal one
+    final scrollController = widget.scrollController ?? _scrollController;
 
     return Container(
       decoration: const BoxDecoration(
@@ -93,16 +110,15 @@ class _SpotBottomSheetState extends ConsumerState<SpotBottomSheet> {
             onVerticalDragEnd: (details) {
               if (widget.sheetController == null) return;
               final size = widget.sheetController!.size;
-              // Snap to nearest snap point
-              if (size < 0.18) {
+              if (size < 0.25) {
                 widget.sheetController!.animateTo(
                   0.08,
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
                 );
-              } else if (size < 0.55) {
+              } else if (size < 0.63) {
                 widget.sheetController!.animateTo(
-                  0.28,
+                  0.42,
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
                 );
@@ -148,7 +164,10 @@ class _SpotBottomSheetState extends ConsumerState<SpotBottomSheet> {
           Expanded(
             child: spots.when(
               data: (list) => ListView.builder(
-                controller: controller,
+                controller: widget.scrollController ?? _scrollController,
+                physics: widget.listScrollable
+                    ? const ClampingScrollPhysics()
+                    : const NeverScrollableScrollPhysics(),
                 itemExtent: _itemExtent,
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 32),
                 itemCount: list.length,

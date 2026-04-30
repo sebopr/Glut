@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/root_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://baihpuerlrsycyxpctka.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhaWhwdWVybHJzeWN5eHBjdGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0MDE3NDQsImV4cCI6MjA5Mjk3Nzc0NH0.CGq8-vc4vhT2LcV_DuoTIEmrMXke9UoA_X_Im3h7uhs',
+  );
 
   final prefs = await SharedPreferences.getInstance();
   final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;

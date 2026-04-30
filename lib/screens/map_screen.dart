@@ -452,11 +452,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           // ── 5. BOTTOM SHEET ─────────────────────────────────
           DraggableScrollableSheet(
             controller: _sheetController,
-            initialChildSize: 0.35,
+            initialChildSize: 0.42,
             minChildSize: 0.08,
             maxChildSize: 0.85,
             snap: true,
-            snapSizes: const [0.08, 0.35, 0.85],
+            snapSizes: const [0.08, 0.42, 0.85],
             builder: (context, scrollController) {
               return SpotBottomSheet(
                 selectedSpot: _selectedSpot,
