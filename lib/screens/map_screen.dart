@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/spots_provider.dart';
 import '../theme.dart';
 import '../models/spot.dart';
@@ -17,7 +19,7 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends ConsumerState<MapScreen> {
+class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserver {
   final _mapController = MapController();
   Spot? _selectedSpot;
   bool _centeredOnUser = false;
@@ -69,6 +71,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         children: [
           // ── 1. MAP ──────────────────────────────────────────
           location.when(
+            skipLoadingOnReload: true,
             data: (pos) {
               if (!_centeredOnUser) {
                 _centeredOnUser = true;
@@ -83,11 +86,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   initialZoom: 13,
                   onTap: (_, __) => setState(() => _selectedSpot = null),
                   onPositionChanged: (position, hasGesture) {
-                    if (hasGesture && position.center != null) {
+                    if (hasGesture) {
                       setState(() {
                         _mapMoved = true;
-                        _currentMapCenter = position.center!;
-                        _mapRotation = position.rotation ?? 0.0;
+                        _currentMapCenter = position.center;
+                        _mapRotation = position.rotation;
                       });
                     }
                   },
@@ -96,7 +99,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   TileLayer(
                     urlTemplate:
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.yourname.glut',
+                    userAgentPackageName: 'com.glut.app',
+                    tileProvider: CancellableNetworkTileProvider(),
                   ),
                   // User location dot
                   MarkerLayer(
@@ -146,8 +150,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
             error: (e, _) => Center(
               child: Text(
-                'Could not get location',
-                style: TextStyle(color: GlutTheme.linen),
+                AppLocalizations.of(context)!.locationError,
+                style: const TextStyle(color: GlutTheme.linen),
               ),
             ),
           ),
@@ -198,8 +202,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     color: GlutTheme.linen,
                                     fontSize: 13,
                                   ),
-                                  decoration: const InputDecoration(
-                                    hintText: 'Search city or area…',
+                                  decoration: InputDecoration(
+                                    hintText: AppLocalizations.of(context)!.searchPlaceholder,
                                     hintStyle: TextStyle(
                                       color: Colors.white38,
                                       fontSize: 13,
@@ -260,9 +264,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               color: GlutTheme.ember,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text(
-                              'Filter',
-                              style: TextStyle(
+                            child: Text(
+                              AppLocalizations.of(context)!.filterButton,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
@@ -373,18 +377,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(color: Colors.white24),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.search,
                                       color: Colors.white,
                                       size: 14,
                                     ),
-                                    SizedBox(width: 6),
+                                    const SizedBox(width: 6),
                                     Text(
-                                      'Search this area',
-                                      style: TextStyle(
+                                      AppLocalizations.of(context)!.searchThisArea,
+                                      style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
@@ -399,48 +403,78 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       else
                         const Spacer(),
 
-                      // Compass button — always on the right
-                      GestureDetector(
-                        onTap: () {
-                          _mapController.rotate(0);
-                          setState(() => _mapRotation = 0.0);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: GlutTheme.ash.withOpacity(0.92),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white12),
-                          ),
-                          child: Transform.rotate(
-                            angle: -_mapRotation * (3.14159265 / 180),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text(
-                                  'N',
-                                  style: TextStyle(
-                                    color: GlutTheme.ember,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                      // Compass + locate buttons stacked on the right
+                      Column(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              _mapController.rotate(0);
+                              setState(() => _mapRotation = 0.0);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: GlutTheme.ash.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.white12),
+                              ),
+                              child: Transform.rotate(
+                                angle: -_mapRotation * (3.14159265 / 180),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Text(
+                                      'N',
+                                      style: TextStyle(
+                                        color: GlutTheme.ember,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Container(
+                                      width: 2,
+                                      height: 8,
+                                      color: GlutTheme.ember,
+                                    ),
+                                    Container(
+                                      width: 2,
+                                      height: 8,
+                                      color: Colors.white24,
+                                    ),
+                                  ],
                                 ),
-                                Container(
-                                  width: 2,
-                                  height: 8,
-                                  color: GlutTheme.ember,
-                                ),
-                                Container(
-                                  width: 2,
-                                  height: 8,
-                                  color: Colors.white24,
-                                ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: () {
+                              final pos = ref.read(locationProvider).value;
+                              if (pos != null) {
+                                _mapController.move(
+                                  LatLng(pos.latitude, pos.longitude),
+                                  15,
+                                );
+                              }
+                            },
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: GlutTheme.ash.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.white12),
+                              ),
+                              child: const Icon(
+                                Icons.my_location,
+                                size: 18,
+                                color: GlutTheme.ember,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -477,7 +511,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (ref.read(locationProvider).hasError) {
+        ref.invalidate(locationProvider);
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _sheetController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -502,7 +552,9 @@ class _SpotPin extends StatelessWidget {
           width: selected ? 2.5 : 1.5,
         ),
       ),
-      child: const Center(child: Text('🔥', style: TextStyle(fontSize: 14))),
+      child: const Center(
+        child: Icon(Icons.local_fire_department, size: 16, color: Colors.white),
+      ),
     );
   }
 }

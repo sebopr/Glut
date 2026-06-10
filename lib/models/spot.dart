@@ -74,6 +74,36 @@ class Spot {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'description': description,
+    'lat': lat,
+    'lng': lng,
+    'hasWood': hasWood,
+    'hasGrill': hasGrill,
+    'hasShelter': hasShelter,
+    'isAccessible': isAccessible,
+    'hasFireplace': hasFireplace,
+    'isPicnicSite': isPicnicSite,
+    'distanceKm': distanceKm,
+  };
+
+  factory Spot.fromJson(Map<String, dynamic> json) => Spot(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    description: json['description'] as String?,
+    lat: (json['lat'] as num).toDouble(),
+    lng: (json['lng'] as num).toDouble(),
+    hasWood: json['hasWood'] as bool? ?? false,
+    hasGrill: json['hasGrill'] as bool? ?? false,
+    hasShelter: json['hasShelter'] as bool? ?? false,
+    isAccessible: json['isAccessible'] as bool? ?? false,
+    hasFireplace: json['hasFireplace'] as bool? ?? false,
+    isPicnicSite: json['isPicnicSite'] as bool? ?? false,
+    distanceKm: (json['distanceKm'] as num?)?.toDouble(),
+  );
+
   Spot copyWith({double? distanceKm}) {
     return Spot(
       id: id,

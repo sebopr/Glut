@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -5,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/spot.dart';
 import '../services/overpass_service.dart';
 
-final locationProvider = FutureProvider<Position>((ref) async {
+final locationProvider = StreamProvider<Position>((ref) async* {
   bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
   if (!serviceEnabled) throw Exception('Location services disabled');
 
@@ -21,8 +22,16 @@ final locationProvider = FutureProvider<Position>((ref) async {
     throw Exception('Location permission permanently denied');
   }
 
-  return await Geolocator.getCurrentPosition(
-    desiredAccuracy: LocationAccuracy.medium,
+  // Emit current position immediately so the map loads without waiting for first stream tick
+  yield await Geolocator.getCurrentPosition(
+    locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+  );
+
+  yield* Geolocator.getPositionStream(
+    locationSettings: const LocationSettings(
+      accuracy: LocationAccuracy.medium,
+      distanceFilter: 10,
+    ),
   );
 });
 
@@ -38,7 +47,7 @@ class SearchLocation extends Notifier<LatLng?> {
 
 final spotsProvider = FutureProvider<List<Spot>>((ref) async {
   final searchLocation = ref.watch(searchLocationProvider);
-  final userPosition = await ref.watch(locationProvider.future);
+  final userPosition = await ref.read(locationProvider.future);
 
   final fetchLat = searchLocation?.latitude ?? userPosition.latitude;
   final fetchLng = searchLocation?.longitude ?? userPosition.longitude;
@@ -114,17 +123,20 @@ class FavouritesNotifier extends Notifier<Set<String>> {
     state = ids.toSet();
   }
 
-  Future<void> toggle(String spotId) async {
-    print('🔥 Toggle called for spot: $spotId');
-    print('🔥 Current favourites: $state');
+  Future<void> toggle(Spot spot) async {
     final prefs = await SharedPreferences.getInstance();
-    if (state.contains(spotId)) {
-      state = {...state}..remove(spotId);
+    final jsonList = prefs.getStringList('saved_spots') ?? [];
+
+    if (state.contains(spot.id)) {
+      jsonList.removeWhere((s) => (jsonDecode(s) as Map)['id'] == spot.id);
+      state = {...state}..remove(spot.id);
     } else {
-      state = {...state, spotId};
+      jsonList.add(jsonEncode(spot.toJson()));
+      state = {...state, spot.id};
     }
+
+    await prefs.setStringList('saved_spots', jsonList);
     await prefs.setStringList('favourites', state.toList());
-    print('🔥 New favourites: $state');
   }
 
   bool isFavourite(String spotId) => state.contains(spotId);
@@ -133,3 +145,12 @@ class FavouritesNotifier extends Notifier<Set<String>> {
 final favouritesProvider = NotifierProvider<FavouritesNotifier, Set<String>>(
   FavouritesNotifier.new,
 );
+
+final savedSpotsProvider = FutureProvider<List<Spot>>((ref) async {
+  ref.watch(favouritesProvider);
+  final prefs = await SharedPreferences.getInstance();
+  final jsonList = prefs.getStringList('saved_spots') ?? [];
+  return jsonList
+      .map((s) => Spot.fromJson(jsonDecode(s) as Map<String, dynamic>))
+      .toList();
+});

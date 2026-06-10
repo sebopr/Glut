@@ -5,7 +5,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n/app_localizations.dart';
 import '../models/spot.dart';
+import '../utils/spot_display.dart';
 import '../providers/spots_provider.dart';
 import '../services/elevation_service.dart';
 import '../theme.dart';
@@ -43,6 +45,40 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     _loadWeather();
   }
 
+  IconData _weatherIcon(int code) {
+    if (code == 0) return Icons.wb_sunny;
+    if (code <= 3) return Icons.wb_cloudy;
+    if (code <= 48) return Icons.foggy;
+    if (code <= 57) return Icons.grain;
+    if (code <= 67) return Icons.umbrella;
+    if (code <= 77) return Icons.ac_unit;
+    if (code <= 82) return Icons.water_drop;
+    if (code <= 86) return Icons.ac_unit;
+    if (code <= 99) return Icons.thunderstorm;
+    return Icons.device_thermostat;
+  }
+
+  String _localizedDescription(WeatherData w, AppLocalizations l10n) {
+    final code = w.weatherCode;
+    if (code == 0) return l10n.weatherClearSky;
+    if (code <= 3) return l10n.weatherPartlyCloudy;
+    if (code <= 48) return l10n.weatherFoggy;
+    if (code <= 57) return l10n.weatherDrizzle;
+    if (code <= 67) return l10n.weatherRainy;
+    if (code <= 77) return l10n.weatherSnowy;
+    if (code <= 82) return l10n.weatherRainShowers;
+    if (code <= 86) return l10n.weatherSnowShowers;
+    if (code <= 99) return l10n.weatherThunderstorm;
+    return l10n.weatherUnknown;
+  }
+
+  String _localizedFireAdvice(WeatherData w, AppLocalizations l10n) {
+    if (w.weatherCode >= 51) return l10n.fireAdviceRain;
+    if (w.windSpeed >= 30) return l10n.fireAdviceWindy;
+    if (w.temperature <= 0) return l10n.fireAdviceFreezing;
+    return l10n.fireAdviceGood;
+  }
+
   Future<void> _loadWeather() async {
     final weather = await WeatherService.getWeather(
       widget.spot.lat,
@@ -69,6 +105,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final spot = widget.spot;
     final isFavourite = ref.watch(favouritesProvider).contains(spot.id);
 
@@ -114,7 +151,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                               ),
                             ),
                             child: const Center(
-                              child: Text('🔥', style: TextStyle(fontSize: 26)),
+                              child: Icon(Icons.local_fire_department, size: 28, color: GlutTheme.ember),
                             ),
                           ),
                         ),
@@ -170,7 +207,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                             GestureDetector(
                               onTap: () => ref
                                   .read(favouritesProvider.notifier)
-                                  .toggle(spot.id),
+                                  .toggle(spot),
                               child: Container(
                                 width: 44,
                                 height: 44,
@@ -208,7 +245,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                 children: [
                   // Name
                   Text(
-                    spot.name,
+                    localizedSpotName(spot.name, l10n),
                     style: const TextStyle(
                       fontFamily: 'Georgia',
                       fontSize: 22,
@@ -221,12 +258,19 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                   if (spot.distanceKm != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        '${spot.distanceKm!.toStringAsFixed(1)} km away ✈',
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            l10n.distanceKmAway(spot.distanceKm!.toStringAsFixed(1)),
+                            style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.flight, size: 12, color: Colors.white54),
+                        ],
                       ),
                     ),
 
@@ -258,12 +302,12 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                               ),
                             );
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              SnackBar(
                                 content: Text(
-                                  'Coordinates copied to clipboard',
+                                  l10n.coordinatesCopiedClipboard,
                                 ),
                                 backgroundColor: GlutTheme.coal,
-                                duration: Duration(seconds: 2),
+                                duration: const Duration(seconds: 2),
                               ),
                             );
                           },
@@ -347,9 +391,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                             children: [
                               Row(
                                 children: [
-                                  Text(
-                                    _weather!.emoji,
-                                    style: const TextStyle(fontSize: 28),
+                                  Icon(
+                                    _weatherIcon(_weather!.weatherCode),
+                                    size: 28,
+                                    color: Colors.white70,
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -358,7 +403,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          '${_weather!.temperature.toStringAsFixed(1)}°C  ·  ${_weather!.description}',
+                                          '${_weather!.temperature.toStringAsFixed(1)}°C  ·  ${_localizedDescription(_weather!, l10n)}',
                                           style: const TextStyle(
                                             color: GlutTheme.linen,
                                             fontSize: 14,
@@ -367,7 +412,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'Wind ${_weather!.windSpeed.toStringAsFixed(0)} km/h  ·  Humidity ${_weather!.humidity}%',
+                                          l10n.windAndHumidity(
+                                            _weather!.windSpeed.toStringAsFixed(0),
+                                            _weather!.humidity,
+                                          ),
                                           style: const TextStyle(
                                             color: Colors.white38,
                                             fontSize: 11,
@@ -409,7 +457,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      _weather!.fireAdvice,
+                                      _localizedFireAdvice(_weather!, l10n),
                                       style: TextStyle(
                                         color: _weather!.goodForFire
                                             ? GlutTheme.moss
@@ -448,19 +496,19 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Fire allowed today',
-                              style: TextStyle(
+                              l10n.fireAllowedToday,
+                              style: const TextStyle(
                                 color: GlutTheme.moss,
                                 fontSize: 12,
                               ),
                             ),
                             Text(
-                              'Check local regulations before lighting',
-                              style: TextStyle(
+                              l10n.checkLocalRegulations,
+                              style: const TextStyle(
                                 color: Colors.white38,
                                 fontSize: 10,
                               ),
@@ -474,9 +522,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                   const SizedBox(height: 16),
 
                   // Amenities
-                  const Text(
-                    'Amenities',
-                    style: TextStyle(
+                  Text(
+                    l10n.sectionAmenities,
+                    style: const TextStyle(
                       color: Colors.white54,
                       fontSize: 10,
                       letterSpacing: 1,
@@ -487,21 +535,21 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      if (spot.hasWood) _Amenity('🪵 Wood'),
-                      if (spot.hasGrill) _Amenity('🍖 Grill'),
-                      if (spot.hasShelter) _Amenity('🏕️ Shelter'),
-                      if (spot.isAccessible) _Amenity('♿ Accessible'),
-                      if (spot.hasFireplace) _Amenity('🔥 Fireplace'),
-                      if (spot.isPicnicSite) _Amenity('🧺 Picnic site'),
+                      if (spot.hasWood) _Amenity(Icons.forest, l10n.amenityWood),
+                      if (spot.hasGrill) _Amenity(Icons.outdoor_grill, l10n.amenityGrill),
+                      if (spot.hasShelter) _Amenity(Icons.cottage, l10n.amenityShelter),
+                      if (spot.isAccessible) _Amenity(Icons.accessible, l10n.amenityAccessible),
+                      if (spot.hasFireplace) _Amenity(Icons.local_fire_department, l10n.amenityFireplace),
+                      if (spot.isPicnicSite) _Amenity(Icons.park, l10n.amenityPicnicSite),
                       if (!spot.hasWood &&
                           !spot.hasGrill &&
                           !spot.hasShelter &&
                           !spot.isAccessible &&
                           !spot.hasFireplace &&
                           !spot.isPicnicSite)
-                        const Text(
-                          'No amenity info available',
-                          style: TextStyle(color: Colors.white38, fontSize: 12),
+                        Text(
+                          l10n.noAmenityInfo,
+                          style: const TextStyle(color: Colors.white38, fontSize: 12),
                         ),
                     ],
                   ),
@@ -527,9 +575,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onPressed: () => _showNavigationSheet(context),
-                      child: const Text(
-                        'Navigate',
-                        style: TextStyle(
+                      child: Text(
+                        l10n.actionNavigate,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w500,
                           fontSize: 15,
@@ -557,9 +605,9 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                         color: Colors.white54,
                         size: 18,
                       ),
-                      label: const Text(
-                        'Share this spot',
-                        style: TextStyle(
+                      label: Text(
+                        l10n.actionShare,
+                        style: const TextStyle(
                           color: Colors.white54,
                           fontWeight: FontWeight.w500,
                           fontSize: 15,
@@ -598,6 +646,8 @@ class _NavigationSheetState extends State<_NavigationSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return SingleChildScrollView(
       child: Padding(
         padding: EdgeInsets.fromLTRB(
@@ -610,18 +660,18 @@ class _NavigationSheetState extends State<_NavigationSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Navigate to spot',
-              style: TextStyle(
+            Text(
+              l10n.navSheetTitle,
+              style: const TextStyle(
                 color: GlutTheme.linen,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Most fire spots are only reachable on foot',
-              style: TextStyle(color: Colors.white38, fontSize: 11),
+            Text(
+              l10n.navSheetSubtitle,
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
             ),
             const SizedBox(height: 16),
 
@@ -634,13 +684,13 @@ class _NavigationSheetState extends State<_NavigationSheet> {
               child: Row(
                 children: [
                   _ModeTab(
-                    label: 'Walking',
+                    label: l10n.navModeWalking,
                     icon: Icons.directions_walk,
                     selected: _walking,
                     onTap: () => setState(() => _walking = true),
                   ),
                   _ModeTab(
-                    label: 'Driving',
+                    label: l10n.navModeDriving,
                     icon: Icons.directions_car_outlined,
                     selected: !_walking,
                     onTap: () => setState(() => _walking = false),
@@ -654,7 +704,7 @@ class _NavigationSheetState extends State<_NavigationSheet> {
             if (_walking && _isInSwitzerland) ...[
               _NavOption(
                 label: 'Swisstopo',
-                sublabel: 'Recommended · Swiss hiking trails',
+                sublabel: l10n.navSwisstopoSublabel,
                 icon: Icons.terrain_outlined,
                 onTap: () async {
                   Navigator.pop(context);
@@ -699,7 +749,7 @@ class _NavigationSheetState extends State<_NavigationSheet> {
             if (_walking && !_isInSwitzerland) ...[
               _NavOption(
                 label: 'Komoot',
-                sublabel: 'Recommended · Hiking trails',
+                sublabel: l10n.navKomootSublabel,
                 icon: Icons.terrain_outlined,
                 onTap: () async {
                   Navigator.pop(context);
@@ -715,7 +765,7 @@ class _NavigationSheetState extends State<_NavigationSheet> {
             // Google Maps
             _NavOption(
               label: 'Google Maps',
-              sublabel: _walking ? 'Walking directions' : 'Driving directions',
+              sublabel: _walking ? l10n.navWalkingDirections : l10n.navDrivingDirections,
               icon: Icons.map_outlined,
               onTap: () async {
                 Navigator.pop(context);
@@ -749,8 +799,8 @@ class _NavigationSheetState extends State<_NavigationSheet> {
               _NavOption(
                 label: 'Apple Maps',
                 sublabel: _walking
-                    ? 'Walking directions'
-                    : 'Driving directions',
+                    ? l10n.navWalkingDirections
+                    : l10n.navDrivingDirections,
                 icon: Icons.apple,
                 onTap: () async {
                   Navigator.pop(context);
@@ -776,7 +826,7 @@ class _NavigationSheetState extends State<_NavigationSheet> {
             if (!_walking) ...[
               _NavOption(
                 label: 'Waze',
-                sublabel: 'Driving directions',
+                sublabel: l10n.navDrivingDirections,
                 icon: Icons.navigation_outlined,
                 onTap: () async {
                   Navigator.pop(context);
@@ -791,8 +841,8 @@ class _NavigationSheetState extends State<_NavigationSheet> {
 
             // Street View
             _NavOption(
-              label: 'View on Google Maps',
-              sublabel: 'Street View & satellite',
+              label: l10n.navViewGoogleMaps,
+              sublabel: l10n.navStreetViewSublabel,
               icon: Icons.streetview,
               onTap: () async {
                 Navigator.pop(context);
@@ -806,7 +856,7 @@ class _NavigationSheetState extends State<_NavigationSheet> {
 
             // Copy coordinates
             _NavOption(
-              label: 'Copy coordinates',
+              label: l10n.navCopyCoordinates,
               sublabel:
                   '${widget.spot.lat.toStringAsFixed(6)}, ${widget.spot.lng.toStringAsFixed(6)}',
               icon: Icons.copy_outlined,
@@ -822,17 +872,17 @@ class _NavigationSheetState extends State<_NavigationSheet> {
                   SnackBar(
                     content: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
+                      children: [
                         Text(
-                          'Coordinates copied',
-                          style: TextStyle(
+                          l10n.coordinatesCopied,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        SizedBox(width: 8),
-                        Icon(
+                        const SizedBox(width: 8),
+                        const Icon(
                           Icons.check_circle,
                           color: GlutTheme.moss,
                           size: 18,
@@ -961,8 +1011,9 @@ class _NavOption extends StatelessWidget {
 }
 
 class _Amenity extends StatelessWidget {
+  final IconData icon;
   final String label;
-  const _Amenity(this.label);
+  const _Amenity(this.icon, this.label);
 
   @override
   Widget build(BuildContext context) {
@@ -973,9 +1024,13 @@ class _Amenity extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white10),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(color: GlutTheme.linen, fontSize: 11),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: GlutTheme.ember),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: GlutTheme.linen, fontSize: 11)),
+        ],
       ),
     );
   }

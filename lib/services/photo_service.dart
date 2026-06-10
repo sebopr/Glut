@@ -25,6 +25,24 @@ class PhotoService {
     }
   }
 
+  static Future<bool> reportPhoto({
+    required String spotId,
+    required String photoUrl,
+    required String deviceId,
+  }) async {
+    try {
+      await _supabase.from('photo_reports').insert({
+        'spot_id': spotId,
+        'photo_url': photoUrl,
+        'device_id': deviceId,
+      });
+      return true;
+    } catch (e) {
+      print('Report photo error: $e');
+      return false;
+    }
+  }
+
   static Future<String?> uploadPhoto({
     required String spotId,
     required File imageFile,

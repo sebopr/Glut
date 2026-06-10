@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../theme.dart';
 import 'map_screen.dart';
 import 'saved_screen.dart';
@@ -32,16 +33,16 @@ class _RootScreenState extends State<RootScreen> {
         selectedFontSize: 11,
         unselectedFontSize: 11,
         elevation: 0,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.map_outlined),
-            activeIcon: Icon(Icons.map),
-            label: 'Map',
+            icon: const Icon(Icons.map_outlined),
+            activeIcon: const Icon(Icons.map),
+            label: AppLocalizations.of(context)!.navMap,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border),
-            activeIcon: Icon(Icons.favorite),
-            label: 'Saved',
+            icon: const Icon(Icons.favorite_border),
+            activeIcon: const Icon(Icons.favorite),
+            label: AppLocalizations.of(context)!.navSaved,
           ),
         ],
       ),

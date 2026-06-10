@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/spots_provider.dart';
 import '../../theme.dart';
 
@@ -8,6 +9,7 @@ class FilterSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final needsWood = ref.watch(filterWoodProvider);
     final needsGrill = ref.watch(filterGrillProvider);
 
@@ -17,9 +19,9 @@ class FilterSheet extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Filter spots',
-            style: TextStyle(
+          Text(
+            l10n.filterTitle,
+            style: const TextStyle(
               color: GlutTheme.linen,
               fontSize: 16,
               fontWeight: FontWeight.w500,
@@ -27,13 +29,13 @@ class FilterSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           _ToggleRow(
-            label: 'Wood provided',
+            label: l10n.filterWoodProvided,
             value: needsWood,
             onToggle: () => ref.read(filterWoodProvider.notifier).toggle(),
           ),
           const Divider(color: Colors.white10),
           _ToggleRow(
-            label: 'Grill available',
+            label: l10n.filterGrillAvailable,
             value: needsGrill,
             onToggle: () => ref.read(filterGrillProvider.notifier).toggle(),
           ),
@@ -49,9 +51,9 @@ class FilterSheet extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Show results',
-                style: TextStyle(
+              child: Text(
+                l10n.filterShowResults,
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
                 ),

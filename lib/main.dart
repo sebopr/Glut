@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/root_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'theme.dart';
+import 'l10n/app_localizations.dart';
+import 'providers/locale_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,19 +19,32 @@ void main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+  final localeCode = prefs.getString('locale');
+  final savedLocale = localeCode != null ? Locale(localeCode) : null;
 
-  runApp(ProviderScope(child: GlutApp(onboardingComplete: onboardingComplete)));
+  runApp(
+    ProviderScope(
+      overrides: [
+        localeProvider.overrideWith(() => LocaleNotifier(savedLocale)),
+      ],
+      child: GlutApp(onboardingComplete: onboardingComplete),
+    ),
+  );
 }
 
-class GlutApp extends StatelessWidget {
+class GlutApp extends ConsumerWidget {
   final bool onboardingComplete;
   const GlutApp({super.key, required this.onboardingComplete});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
     return MaterialApp(
       title: 'Glut',
       theme: GlutTheme.dark,
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: onboardingComplete ? const RootScreen() : const OnboardingScreen(),
       debugShowCheckedModeBanner: false,
     );

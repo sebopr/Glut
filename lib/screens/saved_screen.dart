@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/spots_provider.dart';
 import '../theme.dart';
 import 'spot_detail_screen.dart';
+import 'widgets/language_picker.dart';
 import 'widgets/spot_card.dart';
 
 class SavedScreen extends ConsumerWidget {
@@ -10,8 +12,8 @@ class SavedScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final favouriteIds = ref.watch(favouritesProvider);
-    final allSpots = ref.watch(spotsProvider);
+    final l10n = AppLocalizations.of(context)!;
+    final savedSpots = ref.watch(savedSpotsProvider);
 
     return Scaffold(
       backgroundColor: GlutTheme.ash,
@@ -20,63 +22,66 @@ class SavedScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-              child: Column(
+              padding: const EdgeInsets.fromLTRB(16, 20, 8, 16),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Saved',
-                    style: TextStyle(
-                      fontFamily: 'Georgia',
-                      fontSize: 28,
-                      color: GlutTheme.linen,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.savedTitle,
+                          style: const TextStyle(
+                            fontFamily: 'Georgia',
+                            fontSize: 28,
+                            color: GlutTheme.linen,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          l10n.savedCount(savedSpots.value?.length ?? 0),
+                          style: const TextStyle(color: Colors.white38, fontSize: 13),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    '${favouriteIds.length} spots',
-                    style: const TextStyle(color: Colors.white38, fontSize: 13),
+                  IconButton(
+                    onPressed: () => showLanguagePicker(context),
+                    icon: const Icon(Icons.language, color: Colors.white38, size: 22),
                   ),
                 ],
               ),
             ),
             Expanded(
-              child: favouriteIds.isEmpty
-                  ? const _EmptyState()
-                  : allSpots.when(
-                      data: (spots) {
-                        final saved = spots
-                            .where((s) => favouriteIds.contains(s.id))
-                            .toList();
-                        if (saved.isEmpty) return const _EmptyState();
-                        return ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 32),
-                          itemCount: saved.length,
-                          itemBuilder: (_, i) => SpotCard(
-                            spot: saved[i],
-                            highlighted: false,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    SpotDetailScreen(spot: saved[i]),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                      loading: () => const Center(
-                        child: CircularProgressIndicator(
-                          color: GlutTheme.ember,
-                        ),
-                      ),
-                      error: (e, _) => const Center(
-                        child: Text(
-                          'Could not load spots',
-                          style: TextStyle(color: Colors.white38),
+              child: savedSpots.when(
+                data: (spots) {
+                  if (spots.isEmpty) return _EmptyState(l10n: l10n);
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 32),
+                    itemCount: spots.length,
+                    itemBuilder: (_, i) => SpotCard(
+                      spot: spots[i],
+                      highlighted: false,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SpotDetailScreen(spot: spots[i]),
                         ),
                       ),
                     ),
+                  );
+                },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: GlutTheme.ember),
+                ),
+                error: (e, _) => Center(
+                  child: Text(
+                    l10n.savedError,
+                    style: const TextStyle(color: Colors.white38),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -86,7 +91,8 @@ class SavedScreen extends ConsumerWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final AppLocalizations l10n;
+  const _EmptyState({required this.l10n});
 
   @override
   Widget build(BuildContext context) {
@@ -94,21 +100,21 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('🔥', style: TextStyle(fontSize: 48)),
+          const Icon(Icons.local_fire_department, size: 48, color: GlutTheme.ember),
           const SizedBox(height: 16),
-          const Text(
-            'No saved spots yet',
-            style: TextStyle(
+          Text(
+            l10n.savedEmptyTitle,
+            style: const TextStyle(
               color: GlutTheme.linen,
               fontSize: 18,
               fontFamily: 'Georgia',
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Tap the heart on any spot\nto save it for later',
+          Text(
+            l10n.savedEmptySubtitle,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white38, fontSize: 13, height: 1.5),
+            style: const TextStyle(color: Colors.white38, fontSize: 13, height: 1.5),
           ),
         ],
       ),

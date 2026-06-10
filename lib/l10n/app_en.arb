@@ -1,0 +1,129 @@
+{
+  "@@locale": "en",
+
+  "skip": "Skip",
+  "continueButton": "Continue",
+  "notNow": "Not now",
+  "allowLocationAccess": "Allow location access",
+  "cancel": "Cancel",
+
+  "onboardingTitle1": "Find your next\nfire spot",
+  "onboardingSubtitle1": "Discover hundreds of public Feuerstellen across Switzerland, Germany and Austria.",
+  "onboardingTitle2": "Know before\nyou go",
+  "onboardingSubtitle2": "Fire ban status, wood availability and grill info — all in one place.",
+  "onboardingTitle3": "Enable location",
+  "onboardingSubtitle3": "So we can show spots near you and give accurate distances.",
+  "onboardingPermission1": "Show fire spots near your location",
+  "onboardingPermission2": "Alert you to fire bans in your area",
+  "onboardingPermission3": "Never shared or sold — stays on device",
+
+  "searchPlaceholder": "Search city or area…",
+  "filterButton": "Filter",
+  "searchThisArea": "Search this area",
+  "locationError": "Could not get location",
+
+  "navMap": "Map",
+  "navSaved": "Saved",
+
+  "savedTitle": "Saved",
+  "savedCount": "{count} spots",
+  "@savedCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "savedError": "Could not load spots",
+  "savedEmptyTitle": "No saved spots yet",
+  "savedEmptySubtitle": "Tap the heart on any spot\nto save it for later",
+
+  "spotsNearby": "{count} spots nearby",
+  "@spotsNearby": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "amenityWood": "Wood",
+  "amenityGrill": "Grill",
+  "amenityFireplace": "Fireplace",
+  "amenityShelter": "Shelter",
+  "amenityAccessible": "Accessible",
+  "amenityPicnicSite": "Picnic site",
+  "amenityNoInfo": "No info",
+
+  "distanceKmAway": "{distance} km away",
+  "@distanceKmAway": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "coordinatesCopiedClipboard": "Coordinates copied to clipboard",
+  "coordinatesCopied": "Coordinates copied",
+  "fireAllowedToday": "Fire allowed today",
+  "checkLocalRegulations": "Check local regulations before lighting",
+  "sectionAmenities": "Amenities",
+  "noAmenityInfo": "No amenity info available",
+  "actionNavigate": "Navigate",
+  "actionShare": "Share this spot",
+
+  "navSheetTitle": "Navigate to spot",
+  "navSheetSubtitle": "Most fire spots are only reachable on foot",
+  "navModeWalking": "Walking",
+  "navModeDriving": "Driving",
+  "navSwisstopoSublabel": "Recommended · Swiss hiking trails",
+  "navKomootSublabel": "Recommended · Hiking trails",
+  "navWalkingDirections": "Walking directions",
+  "navDrivingDirections": "Driving directions",
+  "navViewGoogleMaps": "View on Google Maps",
+  "navStreetViewSublabel": "Street View & satellite",
+  "navCopyCoordinates": "Copy coordinates",
+
+  "filterTitle": "Filter spots",
+  "filterWoodProvided": "Wood provided",
+  "filterGrillAvailable": "Grill available",
+  "filterShowResults": "Show results",
+
+  "sectionPhotos": "Photos",
+  "addPhoto": "Add photo",
+  "addPhotoSheetTitle": "Add a photo",
+  "takePhoto": "Take a photo",
+  "chooseFromLibrary": "Choose from library",
+  "beFirstToAddPhoto": "Be the first to add a photo",
+  "maxPhotosReached": "Maximum 3 photos per spot",
+  "reportPhoto": "Report photo",
+  "reportPhotoContent": "Report this photo as unrelated to grilling or fire spots?",
+  "report": "Report",
+  "photoUploadError": "Could not upload photo, try again",
+  "photoReportedSuccess": "Photo reported — thanks for the feedback",
+  "photoReportedError": "Could not send report, try again",
+
+  "weatherClearSky": "Clear sky",
+  "weatherPartlyCloudy": "Partly cloudy",
+  "weatherFoggy": "Foggy",
+  "weatherDrizzle": "Drizzle",
+  "weatherRainy": "Rainy",
+  "weatherSnowy": "Snowy",
+  "weatherRainShowers": "Rain showers",
+  "weatherSnowShowers": "Snow showers",
+  "weatherThunderstorm": "Thunderstorm",
+  "weatherUnknown": "Unknown",
+
+  "fireAdviceRain": "Rain expected — check fire ban",
+  "fireAdviceWindy": "Too windy — fire risk high",
+  "fireAdviceFreezing": "Freezing — dress warm",
+  "fireAdviceGood": "Good conditions for a fire",
+
+  "spotTypeFeuerstelle": "Fire spot",
+  "spotTypeGrillplatz": "BBQ spot",
+
+  "languagePickerTitle": "Language",
+  "languageSystem": "System (auto)",
+
+  "windAndHumidity": "Wind {speed} km/h  ·  Humidity {humidity}%",
+  "@windAndHumidity": {
+    "placeholders": {
+      "speed": { "type": "String" },
+      "humidity": { "type": "int" }
+    }
+  }
+}

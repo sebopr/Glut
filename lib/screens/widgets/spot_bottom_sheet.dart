@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/spot.dart';
 import '../../providers/spots_provider.dart';
 import '../../theme.dart';
@@ -152,7 +153,7 @@ class _SpotBottomSheetState extends ConsumerState<SpotBottomSheet> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '${list.length} spots nearby',
+                  AppLocalizations.of(context)!.spotsNearby(list.length),
                   style: const TextStyle(color: Colors.white54, fontSize: 11),
                 ),
               ),
