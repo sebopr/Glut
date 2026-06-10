@@ -4,8 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/root_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/splash_screen.dart';
 import 'theme.dart';
 import 'l10n/app_localizations.dart';
+import 'navigation.dart';
 import 'providers/locale_provider.dart';
 
 void main() async {
@@ -45,7 +47,10 @@ class GlutApp extends ConsumerWidget {
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: onboardingComplete ? const RootScreen() : const OnboardingScreen(),
+      navigatorObservers: [routeObserver],
+      home: SplashScreen(
+        destination: onboardingComplete ? const RootScreen() : const OnboardingScreen(),
+      ),
       debugShowCheckedModeBanner: false,
     );
   }

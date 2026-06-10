@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme.dart';
+import 'admin_screen.dart';
 import 'map_screen.dart';
 import 'saved_screen.dart';
 
@@ -13,8 +14,36 @@ class RootScreen extends StatefulWidget {
 
 class _RootScreenState extends State<RootScreen> {
   int _currentIndex = 0;
+  int _adminTapCount = 0;
+  DateTime? _adminTapStart;
 
   final _screens = const [MapScreen(), SavedScreen()];
+
+  void _onNavTap(int i) {
+    if (i == _currentIndex) {
+      final now = DateTime.now();
+      if (_adminTapStart != null && now.difference(_adminTapStart!) < const Duration(seconds: 3)) {
+        _adminTapCount++;
+        if (_adminTapCount >= 7) {
+          _adminTapCount = 0;
+          _adminTapStart = null;
+          _openAdminIfAuthorized();
+          return;
+        }
+      } else {
+        _adminTapCount = 1;
+        _adminTapStart = now;
+      }
+    }
+    setState(() => _currentIndex = i);
+  }
+
+  Future<void> _openAdminIfAuthorized() async {
+    final granted = await showAdminPinDialog(context);
+    if (granted && mounted) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminScreen()));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +52,7 @@ class _RootScreenState extends State<RootScreen> {
       body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: _onNavTap,
         backgroundColor: GlutTheme.ash,
         selectedItemColor: GlutTheme.ember,
         unselectedItemColor: Colors.white24,

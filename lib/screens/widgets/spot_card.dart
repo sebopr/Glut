@@ -28,7 +28,7 @@ class SpotCard extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: highlighted
-                ? GlutTheme.ember.withOpacity(0.15)
+                ? GlutTheme.ember.withValues(alpha: 0.15)
                 : GlutTheme.coal,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
@@ -106,7 +106,7 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: positive ? GlutTheme.moss.withOpacity(0.15) : Colors.white10,
+        color: positive ? GlutTheme.moss.withValues(alpha: 0.15) : Colors.white10,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(

@@ -84,7 +84,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
                 options: MapOptions(
                   initialCenter: LatLng(pos.latitude, pos.longitude),
                   initialZoom: 13,
-                  onTap: (_, __) => setState(() => _selectedSpot = null),
+                  onTap: (_, _) => setState(() => _selectedSpot = null),
                   onPositionChanged: (position, hasGesture) {
                     if (hasGesture) {
                       setState(() {
@@ -140,7 +140,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
                           .toList(),
                     ),
                     loading: () => const MarkerLayer(markers: []),
-                    error: (_, __) => const MarkerLayer(markers: []),
+                    error: (_, _) => const MarkerLayer(markers: []),
                   ),
                 ],
               );
@@ -169,7 +169,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
                       Expanded(
                         child: Container(
                           decoration: BoxDecoration(
-                            color: GlutTheme.ash.withOpacity(0.95),
+                            color: GlutTheme.ash.withValues(alpha: 0.95),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: _searchActive

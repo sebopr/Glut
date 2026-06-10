@@ -19,7 +19,7 @@ import '../services/share_service.dart';
 class SpotDetailScreen extends ConsumerStatefulWidget {
   final Spot spot;
 
-  SpotDetailScreen({super.key, required this.spot});
+  const SpotDetailScreen({super.key, required this.spot});
 
   @override
   ConsumerState<SpotDetailScreen> createState() => _SpotDetailScreenState();
@@ -30,19 +30,19 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   WeatherData? _weather;
   bool _weatherLoading = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadElevation();
+    _loadWeather();
+  }
+
   Future<void> _loadElevation() async {
     final elevation = await ElevationService.getElevation(
       widget.spot.lat,
       widget.spot.lng,
     );
     if (mounted) setState(() => _elevation = elevation);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadElevation();
-    _loadWeather();
   }
 
   IconData _weatherIcon(int code) {
@@ -435,13 +435,13 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: _weather!.goodForFire
-                                      ? GlutTheme.moss.withOpacity(0.1)
-                                      : Colors.orange.withOpacity(0.1),
+                                      ? GlutTheme.moss.withValues(alpha: 0.1)
+                                      : Colors.orange.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
                                     color: _weather!.goodForFire
-                                        ? GlutTheme.moss.withOpacity(0.3)
-                                        : Colors.orange.withOpacity(0.3),
+                                        ? GlutTheme.moss.withValues(alpha: 0.3)
+                                        : Colors.orange.withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Row(
@@ -479,10 +479,10 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: GlutTheme.moss.withOpacity(0.1),
+                      color: GlutTheme.moss.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: GlutTheme.moss.withOpacity(0.3),
+                        color: GlutTheme.moss.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,7 +17,8 @@ class SpotPhotos extends StatefulWidget {
 }
 
 class _SpotPhotosState extends State<SpotPhotos> {
-  List<String> _photos = [];
+  List<String> _approved = [];
+  List<String> _pending = [];
   bool _loading = true;
   bool _uploading = false;
   final _picker = ImagePicker();
@@ -27,17 +29,6 @@ class _SpotPhotosState extends State<SpotPhotos> {
     _loadPhotos();
   }
 
-  Future<void> _loadPhotos() async {
-    if (mounted) setState(() => _loading = true);
-    final photos = await PhotoService.getPhotosForSpot(widget.spotId);
-    if (mounted) {
-      setState(() {
-        _photos = photos;
-        _loading = false;
-      });
-    }
-  }
-
   Future<String> _getDeviceId() async {
     final prefs = await SharedPreferences.getInstance();
     if (!prefs.containsKey('device_id')) {
@@ -46,26 +37,31 @@ class _SpotPhotosState extends State<SpotPhotos> {
     return prefs.getString('device_id')!;
   }
 
-  SnackBar _errorSnackBar(String message) => SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.orange, size: 18),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message, style: const TextStyle(color: Colors.white, fontSize: 13))),
-          ],
-        ),
-        backgroundColor: GlutTheme.coal,
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-      );
+  Future<void> _loadPhotos() async {
+    if (mounted) setState(() => _loading = true);
+    final deviceId = await _getDeviceId();
+    final results = await Future.wait([
+      PhotoService.getApprovedPhotos(widget.spotId),
+      PhotoService.getMyPendingPhotos(widget.spotId, deviceId),
+    ]);
+    if (mounted) {
+      setState(() {
+        _approved = results[0];
+        _pending = results[1];
+        _loading = false;
+      });
+    }
+  }
 
-  SnackBar _infoSnackBar(String message) => SnackBar(
+  SnackBar _infoSnackBar(String msg) => SnackBar(
         content: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(message, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+            Text(msg,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500)),
             const SizedBox(width: 8),
             const Icon(Icons.info_outline, color: Colors.orange, size: 18),
           ],
@@ -79,7 +75,7 @@ class _SpotPhotosState extends State<SpotPhotos> {
 
   void _showAddPhotoSheet() {
     final l10n = AppLocalizations.of(context)!;
-    showModalBottomSheet(
+    showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: GlutTheme.coal,
       shape: const RoundedRectangleBorder(
@@ -93,104 +89,97 @@ class _SpotPhotosState extends State<SpotPhotos> {
             Text(
               l10n.addPhotoSheetTitle,
               style: const TextStyle(
-                color: GlutTheme.linen,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+                  color: GlutTheme.linen,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(
-                Icons.camera_alt_outlined,
-                color: GlutTheme.ember,
-              ),
-              title: Text(
-                l10n.takePhoto,
-                style: const TextStyle(color: GlutTheme.linen),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera);
-              },
+              leading:
+                  const Icon(Icons.camera_alt_outlined, color: GlutTheme.ember),
+              title: Text(l10n.takePhoto,
+                  style: const TextStyle(color: GlutTheme.linen)),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(
-                Icons.photo_library_outlined,
-                color: GlutTheme.ember,
-              ),
-              title: Text(
-                l10n.chooseFromLibrary,
-                style: const TextStyle(color: GlutTheme.linen),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
-              },
+              leading: const Icon(Icons.photo_library_outlined,
+                  color: GlutTheme.ember),
+              title: Text(l10n.chooseFromLibrary,
+                  style: const TextStyle(color: GlutTheme.linen)),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
           ],
         ),
       ),
-    );
+    ).then((source) {
+      debugPrint('📸 sheet closed — source=$source mounted=$mounted');
+      if (source != null) _pickImage(source);
+    });
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    final l10n = AppLocalizations.of(context)!;
-    final messenger = ScaffoldMessenger.of(context);
-    final picked = await _picker.pickImage(
-      source: source,
-      maxWidth: 1920,
-      maxHeight: 1440,
-      imageQuality: 90,
-    );
-
-    if (picked == null) return;
-
-    if (_photos.length >= 3) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                l10n.maxPhotosReached,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.info_outline, color: Colors.orange, size: 18),
-            ],
-          ),
-          backgroundColor: GlutTheme.coal,
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _uploading = true);
-
+    debugPrint('📸 _pickImage start — source=$source');
     try {
+      final l10n = AppLocalizations.of(context)!;
+      final messenger = ScaffoldMessenger.of(context);
+
+      if (_approved.length + _pending.length >= 3) {
+        messenger.showSnackBar(_infoSnackBar(l10n.maxPhotosReached));
+        return;
+      }
+
+      debugPrint('📸 opening picker');
+      final picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1440,
+        imageQuality: 90,
+      );
+      debugPrint('📸 picker returned — path=${picked?.path ?? 'null'} mounted=$mounted');
+
+      if (picked == null) return;
+      if (!mounted) return;
+
+      setState(() => _uploading = true);
+
+      debugPrint('📸 calling uploadPhoto');
       final deviceId = await _getDeviceId();
       final result = await PhotoService.uploadPhoto(
         spotId: widget.spotId,
         imageFile: File(picked.path),
         deviceId: deviceId,
       );
+      debugPrint('📸 uploadPhoto returned — result=$result');
 
-      await _loadPhotos();
-
-      if (result == null) {
-        messenger.showSnackBar(_errorSnackBar(l10n.photoUploadError));
-      } else if (result == 'limit_reached') {
+      if (result == 'limit_reached') {
         messenger.showSnackBar(_infoSnackBar(l10n.maxPhotosReached));
+      } else {
+        await _loadPhotos();
+        debugPrint('📸 loadPhotos done — approved=${_approved.length} pending=${_pending.length}');
+      }
+    } catch (e, st) {
+      debugPrint('📸 ERROR: $e\n$st');
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: GlutTheme.coal,
+            title: const Text('Upload error',
+                style: TextStyle(color: Colors.white, fontSize: 15)),
+            content: SingleChildScrollView(
+              child: Text('$e',
+                  style:
+                      const TextStyle(color: Colors.white70, fontSize: 11)),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK',
+                    style: TextStyle(color: GlutTheme.ember)),
+              ),
+            ],
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _uploading = false);
@@ -202,7 +191,7 @@ class _SpotPhotosState extends State<SpotPhotos> {
       context,
       MaterialPageRoute(
         builder: (_) => _PhotoViewer(
-          photos: _photos,
+          photos: _approved,
           initialIndex: index,
           spotId: widget.spotId,
           getDeviceId: _getDeviceId,
@@ -211,75 +200,130 @@ class _SpotPhotosState extends State<SpotPhotos> {
     );
   }
 
+  // ── Tile builders ──────────────────────────────────────────────────────────
+
+  Widget _uploadingTile() => Container(
+        width: 120,
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: GlutTheme.coal,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Center(
+          child:
+              CircularProgressIndicator(color: GlutTheme.ember, strokeWidth: 2),
+        ),
+      );
+
+  Widget _pendingTile(String url) => Container(
+        width: 120,
+        margin: const EdgeInsets.only(right: 8),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, _) => Container(
+                  color: GlutTheme.coal,
+                  child: const Center(
+                    child: Icon(Icons.image_outlined,
+                        color: Colors.white24, size: 28),
+                  ),
+                ),
+              ),
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.35),
+                ),
+              ),
+              const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.hourglass_empty_rounded,
+                        color: GlutTheme.ember, size: 22),
+                    SizedBox(height: 5),
+                    Text(
+                      'In review',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 9,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  // ── Build ──────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final totalCount = _approved.length + _pending.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               l10n.sectionPhotos.toUpperCase(),
               style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 10,
-                letterSpacing: 1,
-              ),
+                  color: Colors.white54, fontSize: 10, letterSpacing: 1),
             ),
-            if (_photos.length < 3)
+            if (totalCount < 3 && !_uploading)
               GestureDetector(
                 onTap: _showAddPhotoSheet,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: GlutTheme.ember.withOpacity(0.15),
+                    color: GlutTheme.ember.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: GlutTheme.ember.withOpacity(0.3)),
+                    border: Border.all(
+                        color: GlutTheme.ember.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.add_a_photo_outlined,
-                        size: 12,
-                        color: GlutTheme.ember,
-                      ),
+                      const Icon(Icons.add_a_photo_outlined,
+                          size: 12, color: GlutTheme.ember),
                       const SizedBox(width: 4),
-                      Text(
-                        l10n.addPhoto,
-                        style: const TextStyle(color: GlutTheme.ember, fontSize: 11),
-                      ),
+                      Text(l10n.addPhoto,
+                          style: const TextStyle(
+                              color: GlutTheme.ember, fontSize: 11)),
                     ],
                   ),
                 ),
               )
             else
-              const Text(
-                '3/3',
-                style: TextStyle(color: Colors.white38, fontSize: 11),
+              Text(
+                '$totalCount/3',
+                style:
+                    const TextStyle(color: Colors.white38, fontSize: 11),
               ),
           ],
         ),
         const SizedBox(height: 10),
 
-        // Photo content
         if (_loading)
           const SizedBox(
             height: 100,
             child: Center(
               child: CircularProgressIndicator(
-                color: GlutTheme.ember,
-                strokeWidth: 2,
-              ),
+                  color: GlutTheme.ember, strokeWidth: 2),
             ),
           )
-        else if (_photos.isEmpty && !_uploading)
+        else if (totalCount == 0 && !_uploading)
           GestureDetector(
             onTap: _showAddPhotoSheet,
             child: Container(
@@ -293,16 +337,12 @@ class _SpotPhotosState extends State<SpotPhotos> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.add_a_photo_outlined,
-                    color: Colors.white24,
-                    size: 28,
-                  ),
+                  const Icon(Icons.add_a_photo_outlined,
+                      color: Colors.white24, size: 28),
                   const SizedBox(height: 8),
-                  Text(
-                    l10n.beFirstToAddPhoto,
-                    style: const TextStyle(color: Colors.white38, fontSize: 12),
-                  ),
+                  Text(l10n.beFirstToAddPhoto,
+                      style: const TextStyle(
+                          color: Colors.white38, fontSize: 12)),
                 ],
               ),
             ),
@@ -312,36 +352,23 @@ class _SpotPhotosState extends State<SpotPhotos> {
             height: 120,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: _photos.length + (_uploading ? 1 : 0),
+              itemCount:
+                  (_uploading ? 1 : 0) + _pending.length + _approved.length,
               itemBuilder: (_, i) {
-                // Uploading placeholder
-                if (_uploading && i == 0) {
-                  return Container(
-                    width: 120,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: GlutTheme.coal,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: GlutTheme.ember,
-                        strokeWidth: 2,
-                      ),
-                    ),
-                  );
-                }
-
-                final photoIndex = _uploading ? i - 1 : i;
+                if (_uploading && i == 0) return _uploadingTile();
+                final base = _uploading ? 1 : 0;
+                final pIdx = i - base;
+                if (pIdx < _pending.length) return _pendingTile(_pending[pIdx]);
+                final aIdx = i - base - _pending.length;
                 return GestureDetector(
-                  onTap: () => _viewPhoto(photoIndex),
+                  onTap: () => _viewPhoto(aIdx),
                   child: Container(
                     width: 120,
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
                       image: DecorationImage(
-                        image: NetworkImage(_photos[photoIndex]),
+                        image: NetworkImage(_approved[aIdx]),
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -354,6 +381,8 @@ class _SpotPhotosState extends State<SpotPhotos> {
     );
   }
 }
+
+// ─── Photo viewer ──────────────────────────────────────────────────────────────
 
 class _PhotoViewer extends StatefulWidget {
   final List<String> photos;
@@ -392,22 +421,20 @@ class _PhotoViewerState extends State<_PhotoViewer> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: GlutTheme.coal,
-        title: Text(
-          l10n.reportPhoto,
-          style: const TextStyle(color: GlutTheme.linen, fontSize: 16),
-        ),
-        content: Text(
-          l10n.reportPhotoContent,
-          style: const TextStyle(color: Colors.white54, fontSize: 13),
-        ),
+        title: Text(l10n.reportPhoto,
+            style: const TextStyle(color: GlutTheme.linen, fontSize: 16)),
+        content: Text(l10n.reportPhotoContent,
+            style: const TextStyle(color: Colors.white54, fontSize: 13)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.cancel, style: const TextStyle(color: Colors.white38)),
+            child: Text(l10n.cancel,
+                style: const TextStyle(color: Colors.white38)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.report, style: const TextStyle(color: GlutTheme.ember)),
+            child:
+                Text(l10n.report, style: const TextStyle(color: GlutTheme.ember)),
           ),
         ],
       ),
@@ -436,7 +463,8 @@ class _PhotoViewerState extends State<_PhotoViewer> {
           backgroundColor: GlutTheme.coal,
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
         ),
       );
@@ -475,12 +503,14 @@ class _PhotoViewerState extends State<_PhotoViewer> {
                         color: Colors.black54,
                         borderRadius: BorderRadius.circular(50),
                       ),
-                      child: const Icon(Icons.close, color: Colors.white, size: 16),
+                      child: const Icon(Icons.close,
+                          color: Colors.white, size: 16),
                     ),
                   ),
                   Text(
                     '${_current + 1} / ${widget.photos.length}',
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
                   GestureDetector(
                     onTap: alreadyReported || _reporting ? null : _report,
@@ -497,15 +527,16 @@ class _PhotoViewerState extends State<_PhotoViewer> {
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 1.5,
-                                  color: Colors.white54,
-                                ),
+                                    strokeWidth: 1.5,
+                                    color: Colors.white54),
                               ),
                             )
                           : Icon(
                               Icons.flag_outlined,
                               size: 16,
-                              color: alreadyReported ? GlutTheme.ember : Colors.white54,
+                              color: alreadyReported
+                                  ? GlutTheme.ember
+                                  : Colors.white54,
                             ),
                     ),
                   ),

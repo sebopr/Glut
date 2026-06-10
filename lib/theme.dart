@@ -15,7 +15,6 @@ class GlutTheme {
     colorScheme: const ColorScheme.dark(
       primary: ember,
       surface: coal,
-      background: ash,
     ),
     textTheme: const TextTheme(
       displaySmall: TextStyle(

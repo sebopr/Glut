@@ -89,7 +89,7 @@ class _ToggleRow extends StatelessWidget {
         Switch(
           value: value,
           onChanged: (_) => onToggle(),
-          activeColor: GlutTheme.ember,
+          activeThumbColor: GlutTheme.ember,
         ),
       ],
     );
