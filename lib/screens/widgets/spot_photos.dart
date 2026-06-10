@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui' show ImageFilter;
+import 'package:exif/exif.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,7 +11,14 @@ import '../../theme.dart';
 
 class SpotPhotos extends StatefulWidget {
   final String spotId;
-  const SpotPhotos({super.key, required this.spotId});
+  final double spotLat;
+  final double spotLng;
+  const SpotPhotos({
+    super.key,
+    required this.spotId,
+    required this.spotLat,
+    required this.spotLng,
+  });
 
   @override
   State<SpotPhotos> createState() => _SpotPhotosState();
@@ -117,6 +125,31 @@ class _SpotPhotosState extends State<SpotPhotos> {
     });
   }
 
+  // Returns GPS coordinates from the image EXIF, or null if absent/unreadable.
+  Future<(double lat, double lng)?> _exifGps(File file) async {
+    try {
+      final tags = await readExifFromBytes(await file.readAsBytes());
+      final latTag = tags['GPS GPSLatitude'];
+      final latRef = tags['GPS GPSLatitudeRef']?.printable ?? 'N';
+      final lngTag = tags['GPS GPSLongitude'];
+      final lngRef = tags['GPS GPSLongitudeRef']?.printable ?? 'E';
+      if (latTag == null || lngTag == null) return null;
+
+      double dms(IfdTag t, String ref) {
+        final r = t.values.toList();
+        final d = (r[0] as Ratio).toDouble();
+        final m = (r[1] as Ratio).toDouble();
+        final s = (r[2] as Ratio).toDouble();
+        final v = d + m / 60.0 + s / 3600.0;
+        return (ref == 'S' || ref == 'W') ? -v : v;
+      }
+
+      return (dms(latTag, latRef), dms(lngTag, lngRef));
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     debugPrint('📸 _pickImage start — source=$source');
     try {
@@ -140,6 +173,9 @@ class _SpotPhotosState extends State<SpotPhotos> {
       if (picked == null) return;
       if (!mounted) return;
 
+      // Extract GPS from EXIF so the admin can see where the photo was taken.
+      final gps = await _exifGps(File(picked.path));
+
       setState(() => _uploading = true);
 
       debugPrint('📸 calling uploadPhoto');
@@ -148,6 +184,10 @@ class _SpotPhotosState extends State<SpotPhotos> {
         spotId: widget.spotId,
         imageFile: File(picked.path),
         deviceId: deviceId,
+        spotLat: widget.spotLat,
+        spotLng: widget.spotLng,
+        photoLat: gps?.$1,
+        photoLng: gps?.$2,
       );
       debugPrint('📸 uploadPhoto returned — result=$result');
 

@@ -559,7 +559,11 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                   const SizedBox(height: 16),
 
                   // Photos
-                  SpotPhotos(spotId: spot.id),
+                  SpotPhotos(
+                    spotId: spot.id,
+                    spotLat: spot.lat,
+                    spotLng: spot.lng,
+                  ),
 
                   const SizedBox(height: 24),
 

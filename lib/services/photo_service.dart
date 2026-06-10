@@ -65,6 +65,10 @@ class PhotoService {
     required String spotId,
     required File imageFile,
     required String deviceId,
+    required double spotLat,
+    required double spotLng,
+    double? photoLat,
+    double? photoLng,
   }) async {
     debugPrint('📸 [1] count check');
     final existing = await _supabase
@@ -98,6 +102,10 @@ class PhotoService {
       'url': url,
       'device_id': deviceId,
       'status': 'pending',
+      'spot_lat': spotLat,
+      'spot_lng': spotLng,
+      'photo_lat': photoLat,
+      'photo_lng': photoLng,
     });
     debugPrint('📸 [8] done');
 
@@ -108,7 +116,7 @@ class PhotoService {
     try {
       final response = await _supabase
           .from('spot_photos')
-          .select('id, spot_id, url, uploaded_at')
+          .select('id, spot_id, url, uploaded_at, photo_lat, photo_lng, spot_lat, spot_lng')
           .eq('status', 'pending')
           .order('uploaded_at', ascending: true);
       return (response as List).cast<Map<String, dynamic>>();

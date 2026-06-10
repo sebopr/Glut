@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import '../services/photo_service.dart';
 import '../theme.dart';
 
@@ -114,6 +115,42 @@ class _PendingPhotoCardState extends State<_PendingPhotoCard> {
     }
   }
 
+  Widget _locationBadge(Map<String, dynamic> photo) {
+    final photoLat = photo['photo_lat'] as double?;
+    final photoLng = photo['photo_lng'] as double?;
+    final spotLat  = photo['spot_lat']  as double?;
+    final spotLng  = photo['spot_lng']  as double?;
+
+    if (photoLat == null || photoLng == null || spotLat == null || spotLng == null) {
+      return const Row(
+        children: [
+          Icon(Icons.location_off_outlined, size: 12, color: Colors.white24),
+          SizedBox(width: 4),
+          Text('No GPS data', style: TextStyle(color: Colors.white24, fontSize: 11)),
+        ],
+      );
+    }
+
+    final distanceM = const Distance().as(
+      LengthUnit.Meter,
+      LatLng(photoLat, photoLng),
+      LatLng(spotLat, spotLng),
+    );
+    final inRange = distanceM <= 250;
+    final color = inRange ? Colors.greenAccent : Colors.orangeAccent;
+    final label = distanceM < 1000
+        ? '${distanceM.toInt()}m from spot'
+        : '${(distanceM / 1000).toStringAsFixed(1)}km from spot';
+
+    return Row(
+      children: [
+        Icon(Icons.location_on_outlined, size: 12, color: color),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(color: color, fontSize: 11)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final spotId = widget.photo['spot_id'] as String;
@@ -164,6 +201,8 @@ class _PendingPhotoCardState extends State<_PendingPhotoCard> {
                   'Spot $shortId',
                   style: const TextStyle(color: Colors.white38, fontSize: 11, letterSpacing: 0.3),
                 ),
+                const SizedBox(height: 6),
+                _locationBadge(widget.photo),
                 const SizedBox(height: 10),
                 if (_busy)
                   const SizedBox(
