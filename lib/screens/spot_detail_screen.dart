@@ -187,19 +187,21 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                         // Share + Favourite on the right
                         Row(
                           children: [
-                            GestureDetector(
-                              onTap: () => ShareService.shareSpot(spot),
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: Colors.black54,
-                                  borderRadius: BorderRadius.circular(50),
-                                ),
-                                child: const Icon(
-                                  Icons.share_outlined,
-                                  color: Colors.white,
-                                  size: 20,
+                            Builder(
+                              builder: (ctx) => GestureDetector(
+                                onTap: () => ShareService.shareSpot(spot, context: ctx),
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: BorderRadius.circular(50),
+                                  ),
+                                  child: const Icon(
+                                    Icons.share_outlined,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ),
@@ -595,26 +597,28 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
                   // Share button
                   SizedBox(
                     width: double.infinity,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white24),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    child: Builder(
+                      builder: (ctx) => OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.white24),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: () => ShareService.shareSpot(spot),
-                      icon: const Icon(
-                        Icons.share_outlined,
-                        color: Colors.white54,
-                        size: 18,
-                      ),
-                      label: Text(
-                        l10n.actionShare,
-                        style: const TextStyle(
+                        onPressed: () => ShareService.shareSpot(spot, context: ctx),
+                        icon: const Icon(
+                          Icons.share_outlined,
                           color: Colors.white54,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 15,
+                          size: 18,
+                        ),
+                        label: Text(
+                          l10n.actionShare,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ),

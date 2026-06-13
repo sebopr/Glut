@@ -1,8 +1,9 @@
+import 'package:flutter/widgets.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/spot.dart';
 
 class ShareService {
-  static Future<void> shareSpot(Spot spot) async {
+  static Future<void> shareSpot(Spot spot, {BuildContext? context}) async {
     final name = spot.name;
     final lat = spot.lat.toStringAsFixed(6);
     final lng = spot.lng.toStringAsFixed(6);
@@ -29,6 +30,16 @@ https://maps.google.com/?q=$lat,$lng
 Found with Glut — find fire spots near you
 ''';
 
-    await Share.share(text.trim(), subject: name);
+    Rect? origin;
+    if (context != null) {
+      final box = context.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize) {
+        origin = box.localToGlobal(Offset.zero) & box.size;
+      }
+    }
+
+    await SharePlus.instance.share(
+      ShareParams(text: text.trim(), subject: name, sharePositionOrigin: origin),
+    );
   }
 }

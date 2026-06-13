@@ -29,6 +29,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
   LatLng _currentMapCenter = const LatLng(47.3769, 8.5417);
 
   final _searchController = TextEditingController();
+  bool _isSatellite = false;
   bool _searchActive = false;
   List<NominatimResult> _searchResults = [];
   bool _searching = false;
@@ -73,6 +74,12 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
   Widget build(BuildContext context) {
     final location = ref.watch(locationProvider);
     final spots = ref.watch(filteredSpotsProvider);
+    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
+    final tileUrl = _isSatellite
+        ? 'https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=jMtXY3hwiXc47Cc16VNH'
+        : isDark
+            ? 'https://api.maptiler.com/maps/streets-v2-dark/{z}/{x}/{y}.png?key=jMtXY3hwiXc47Cc16VNH'
+            : 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=jMtXY3hwiXc47Cc16VNH';
 
     return Scaffold(
       body: Stack(
@@ -105,8 +112,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate: tileUrl,
                     userAgentPackageName: 'com.glut.app',
                     tileProvider: CancellableNetworkTileProvider(),
                   ),
@@ -495,6 +501,24 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
                                 Icons.my_location,
                                 size: 18,
                                 color: GlutTheme.ember,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: () => setState(() => _isSatellite = !_isSatellite),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: _isSatellite ? GlutTheme.ember : GlutTheme.ash.withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: _isSatellite ? GlutTheme.ember : Colors.white12),
+                              ),
+                              child: Icon(
+                                Icons.satellite_alt,
+                                size: 18,
+                                color: _isSatellite ? Colors.white : GlutTheme.ember,
                               ),
                             ),
                           ),
