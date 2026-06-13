@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
@@ -31,20 +32,27 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
   bool _searchActive = false;
   List<NominatimResult> _searchResults = [];
   bool _searching = false;
+  bool _searchError = false;
+  Timer? _searchDebounce;
 
   final _sheetController = DraggableScrollableController();
 
-  Future<void> _search(String query) async {
+  void _onSearchChanged(String query) {
+    _searchDebounce?.cancel();
     if (query.isEmpty) {
-      setState(() => _searchResults = []);
+      setState(() { _searchResults = []; _searchError = false; });
       return;
     }
-    setState(() => _searching = true);
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () => _search(query));
+  }
+
+  Future<void> _search(String query) async {
+    setState(() { _searching = true; _searchError = false; });
     try {
       final results = await NominatimService.search(query);
       setState(() => _searchResults = results);
     } catch (e) {
-      setState(() => _searchResults = []);
+      setState(() { _searchResults = []; _searchError = true; });
     } finally {
       setState(() => _searching = false);
     }
@@ -216,7 +224,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
                                   ),
                                   onTap: () =>
                                       setState(() => _searchActive = true),
-                                  onChanged: (v) => _search(v),
+                                  onChanged: _onSearchChanged,
                                 ),
                               ),
                               if (_searchActive)
@@ -280,7 +288,23 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
                 ),
 
                 // Search results dropdown
-                if (_searchResults.isNotEmpty)
+                if (_searchError && _searchActive)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                      decoration: BoxDecoration(
+                        color: GlutTheme.coal,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: const Text(
+                        'No results found. Try again.',
+                        style: TextStyle(color: Colors.white38, fontSize: 12),
+                      ),
+                    ),
+                  ),
+                if (_searchResults.isNotEmpty && !_searchError)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
                     child: Container(
@@ -528,6 +552,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _searchDebounce?.cancel();
     _sheetController.dispose();
     _searchController.dispose();
     super.dispose();

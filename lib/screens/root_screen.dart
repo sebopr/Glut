@@ -57,10 +57,8 @@ class _RootScreenState extends State<RootScreen> {
         selectedItemColor: GlutTheme.ember,
         unselectedItemColor: Colors.white24,
         type: BottomNavigationBarType.fixed,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
         elevation: 0,
         items: [
           BottomNavigationBarItem(

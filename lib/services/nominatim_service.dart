@@ -3,32 +3,30 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 class NominatimService {
-  static const _baseUrl = 'https://nominatim.openstreetmap.org/search';
+  static const _baseUrl = 'https://api3.geo.admin.ch/rest/services/api/SearchServer';
 
   static Future<List<NominatimResult>> search(String query) async {
     final uri = Uri.parse(_baseUrl).replace(
       queryParameters: {
-        'q': query,
-        'format': 'json',
+        'searchText': query,
+        'type': 'locations',
         'limit': '5',
-        'countrycodes': 'ch,de,at', // Switzerland, Germany, Austria
+        'lang': 'de',
+        'sr': '4326',
       },
     );
 
-    final response = await http.get(
-      uri,
-      headers: {
-        'User-Agent': 'GlutApp/1.0 (fire spot finder; contact@yourmail.com)',
-        'Accept-Language': 'de,en',
-      },
-    );
+    final response = await http.get(uri, headers: {
+      'User-Agent': 'GlutApp/1.0',
+    });
 
     if (response.statusCode != 200) {
-      throw Exception('Nominatim error: ${response.statusCode}');
+      throw Exception('Geocoder error: ${response.statusCode}');
     }
 
-    final data = jsonDecode(response.body) as List<dynamic>;
-    return data
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final results = data['results'] as List<dynamic>;
+    return results
         .map((e) => NominatimResult.fromJson(e as Map<String, dynamic>))
         .toList();
   }
@@ -41,15 +39,19 @@ class NominatimResult {
   NominatimResult({required this.displayName, required this.position});
 
   factory NominatimResult.fromJson(Map<String, dynamic> json) {
+    final attrs = json['attrs'] as Map<String, dynamic>;
     return NominatimResult(
-      displayName: json['display_name'] as String,
+      displayName: attrs['detail'] as String,
       position: LatLng(
-        double.parse(json['lat'] as String),
-        double.parse(json['lon'] as String),
+        (attrs['lat'] as num).toDouble(),
+        (attrs['lon'] as num).toDouble(),
       ),
     );
   }
 
-  // Short name — first part before the first comma
-  String get shortName => displayName.split(',').first.trim();
+  // Strip HTML tags from label for short display
+  String get shortName {
+    final label = displayName.split(' <').first.trim();
+    return label.isNotEmpty ? label : displayName.split(',').first.trim();
+  }
 }

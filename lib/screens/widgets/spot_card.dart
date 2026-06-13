@@ -19,11 +19,9 @@ class SpotCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return SizedBox(
-      height: 68,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -91,10 +89,10 @@ class SpotCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }
+
 
 class _Badge extends StatelessWidget {
   final String label;
