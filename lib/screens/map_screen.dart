@@ -12,6 +12,7 @@ import 'spot_detail_screen.dart';
 import 'widgets/spot_bottom_sheet.dart';
 import 'widgets/filter_sheet.dart';
 import '../services/nominatim_service.dart';
+import '../services/analytics_service.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -62,6 +63,7 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
   void _selectResult(NominatimResult result) {
     _mapController.move(result.position, 13);
     ref.read(searchLocationProvider.notifier).set(result.position);
+    AnalyticsService.logSearch(result.shortName);
     setState(() {
       _searchActive = false;
       _searchResults = [];
@@ -259,16 +261,19 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
                       if (!_searchActive) ...[
                         const SizedBox(width: 8),
                         GestureDetector(
-                          onTap: () => showModalBottomSheet(
-                            context: context,
-                            backgroundColor: GlutTheme.coal,
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(16),
+                          onTap: () {
+                            AnalyticsService.logEvent('filter_opened');
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: GlutTheme.coal,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(16),
+                                ),
                               ),
-                            ),
-                            builder: (_) => const FilterSheet(),
-                          ),
+                              builder: (_) => const FilterSheet(),
+                            );
+                          },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
@@ -506,7 +511,10 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
                           ),
                           const SizedBox(height: 8),
                           GestureDetector(
-                            onTap: () => setState(() => _isSatellite = !_isSatellite),
+                            onTap: () {
+                              setState(() => _isSatellite = !_isSatellite);
+                              AnalyticsService.logEvent(_isSatellite ? 'satellite_on' : 'satellite_off');
+                            },
                             child: Container(
                               width: 40,
                               height: 40,

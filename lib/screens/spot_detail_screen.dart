@@ -15,6 +15,7 @@ import '../services/weather_service.dart';
 import 'widgets/spot_photos.dart';
 import '../services/coordinate_service.dart';
 import '../services/share_service.dart';
+import '../services/analytics_service.dart';
 
 class SpotDetailScreen extends ConsumerStatefulWidget {
   final Spot spot;
@@ -35,6 +36,7 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
     super.initState();
     _loadElevation();
     _loadWeather();
+    AnalyticsService.logSpotView(widget.spot.id);
   }
 
   Future<void> _loadElevation() async {
