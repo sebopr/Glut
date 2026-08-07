@@ -287,4 +287,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String windAndHumidity(String speed, int humidity) {
     return 'Wind $speed km/h  ·  Humidity $humidity%';
   }
+
+  @override
+  String get fireDangerLevel1 => 'Low fire danger';
+
+  @override
+  String get fireDangerLevel2 => 'Moderate fire danger';
+
+  @override
+  String get fireDangerLevel3 => 'Considerable fire danger';
+
+  @override
+  String get fireDangerLevel4 => 'High fire danger';
+
+  @override
+  String get fireDangerLevel5 => 'Very high fire danger';
+
+  @override
+  String get fireDangerNoWarning => 'No active fire warning';
+
+  @override
+  String get fireDangerNoData => 'Fire status unavailable';
+
+  @override
+  String get fireDangerCheckCanton =>
+      'No data from BAFU — check cantonal website';
+
+  @override
+  String get fireDangerSource => 'waldbrandgefahr.ch';
 }

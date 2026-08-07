@@ -22,7 +22,7 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
   final localeCode = prefs.getString('locale');
-  final savedLocale = localeCode != null ? Locale(localeCode) : null;
+  final savedLocale = localeCode == 'auto' ? null : Locale(localeCode ?? 'de');
 
   runApp(
     ProviderScope(

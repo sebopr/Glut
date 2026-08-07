@@ -635,6 +635,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wind {speed} km/h  ·  Humidity {humidity}%'**
   String windAndHumidity(String speed, int humidity);
+
+  /// No description provided for @fireDangerLevel1.
+  ///
+  /// In en, this message translates to:
+  /// **'Low fire danger'**
+  String get fireDangerLevel1;
+
+  /// No description provided for @fireDangerLevel2.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate fire danger'**
+  String get fireDangerLevel2;
+
+  /// No description provided for @fireDangerLevel3.
+  ///
+  /// In en, this message translates to:
+  /// **'Considerable fire danger'**
+  String get fireDangerLevel3;
+
+  /// No description provided for @fireDangerLevel4.
+  ///
+  /// In en, this message translates to:
+  /// **'High fire danger'**
+  String get fireDangerLevel4;
+
+  /// No description provided for @fireDangerLevel5.
+  ///
+  /// In en, this message translates to:
+  /// **'Very high fire danger'**
+  String get fireDangerLevel5;
+
+  /// No description provided for @fireDangerNoWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'No active fire warning'**
+  String get fireDangerNoWarning;
+
+  /// No description provided for @fireDangerNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'Fire status unavailable'**
+  String get fireDangerNoData;
+
+  /// No description provided for @fireDangerCheckCanton.
+  ///
+  /// In en, this message translates to:
+  /// **'No data from BAFU — check cantonal website'**
+  String get fireDangerCheckCanton;
+
+  /// No description provided for @fireDangerSource.
+  ///
+  /// In en, this message translates to:
+  /// **'waldbrandgefahr.ch'**
+  String get fireDangerSource;
 }
 
 class _AppLocalizationsDelegate

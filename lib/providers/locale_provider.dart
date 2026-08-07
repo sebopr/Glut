@@ -13,7 +13,7 @@ class LocaleNotifier extends Notifier<Locale?> {
     state = locale;
     final prefs = await SharedPreferences.getInstance();
     if (locale == null) {
-      await prefs.remove('locale');
+      await prefs.setString('locale', 'auto');
     } else {
       await prefs.setString('locale', locale.languageCode);
     }

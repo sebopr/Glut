@@ -104,5 +104,15 @@
   "languagePickerTitle": "Langue",
   "languageSystem": "Système (automatique)",
 
-  "windAndHumidity": "Vent {speed} km/h  ·  Humidité {humidity}%"
+  "windAndHumidity": "Vent {speed} km/h  ·  Humidité {humidity}%",
+
+  "fireDangerLevel1": "Danger d'incendie faible",
+  "fireDangerLevel2": "Danger d'incendie modéré",
+  "fireDangerLevel3": "Danger d'incendie considérable",
+  "fireDangerLevel4": "Danger d'incendie élevé",
+  "fireDangerLevel5": "Danger d'incendie très élevé",
+  "fireDangerNoWarning": "Aucune interdiction de feu active",
+  "fireDangerNoData": "Statut du feu indisponible",
+  "fireDangerCheckCanton": "Pas de données OFEV — consulter le site cantonal",
+  "fireDangerSource": "waldbrandgefahr.ch"
 }

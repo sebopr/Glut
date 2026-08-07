@@ -3,7 +3,13 @@
     "allow": [
       "Bash(dart run *)",
       "Bash(python3 -c \"import tkinter; print\\('tkinter OK'\\)\")",
-      "Bash(pip3 install *)"
+      "Bash(pip3 install *)",
+      "WebFetch(domain:www.waldbrandgefahr.ch)",
+      "Bash(flutter gen-l10n *)",
+      "Bash(curl -s \"https://nominatim.openstreetmap.org/reverse?lat=47.4&lon=9.3&format=json&zoom=6&addressdetails=1\" -H \"User-Agent: GlutApp/1.0\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s \"https://www.waldbrandgefahr.ch/de/aktuelle-massnahmen.json\")",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); print\\(json.dumps\\([e['canton'] for e in data], indent=2\\)\\)\")"
     ]
   }
 }

@@ -104,5 +104,15 @@
   "languagePickerTitle": "Sprache",
   "languageSystem": "System (automatisch)",
 
-  "windAndHumidity": "Wind {speed} km/h  ·  Luftfeuchtigkeit {humidity}%"
+  "windAndHumidity": "Wind {speed} km/h  ·  Luftfeuchtigkeit {humidity}%",
+
+  "fireDangerLevel1": "Geringe Waldbrandgefahr",
+  "fireDangerLevel2": "Mässige Waldbrandgefahr",
+  "fireDangerLevel3": "Erhebliche Waldbrandgefahr",
+  "fireDangerLevel4": "Grosse Waldbrandgefahr",
+  "fireDangerLevel5": "Sehr grosse Waldbrandgefahr",
+  "fireDangerNoWarning": "Kein aktives Feuerverbot",
+  "fireDangerNoData": "Feuerstatus nicht verfügbar",
+  "fireDangerCheckCanton": "Keine BAFU-Daten — kantonale Website prüfen",
+  "fireDangerSource": "waldbrandgefahr.ch"
 }

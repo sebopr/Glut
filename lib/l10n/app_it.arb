@@ -104,5 +104,15 @@
   "languagePickerTitle": "Lingua",
   "languageSystem": "Sistema (automatico)",
 
-  "windAndHumidity": "Vento {speed} km/h  ·  Umidità {humidity}%"
+  "windAndHumidity": "Vento {speed} km/h  ·  Umidità {humidity}%",
+
+  "fireDangerLevel1": "Pericolo incendio basso",
+  "fireDangerLevel2": "Pericolo incendio moderato",
+  "fireDangerLevel3": "Pericolo incendio considerevole",
+  "fireDangerLevel4": "Pericolo incendio elevato",
+  "fireDangerLevel5": "Pericolo incendio molto elevato",
+  "fireDangerNoWarning": "Nessun divieto di fuoco attivo",
+  "fireDangerNoData": "Stato del fuoco non disponibile",
+  "fireDangerCheckCanton": "Nessun dato UFAM — consultare il sito cantonale",
+  "fireDangerSource": "waldbrandgefahr.ch"
 }

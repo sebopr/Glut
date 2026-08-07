@@ -125,5 +125,15 @@
       "speed": { "type": "String" },
       "humidity": { "type": "int" }
     }
-  }
+  },
+
+  "fireDangerLevel1": "Low fire danger",
+  "fireDangerLevel2": "Moderate fire danger",
+  "fireDangerLevel3": "Considerable fire danger",
+  "fireDangerLevel4": "High fire danger",
+  "fireDangerLevel5": "Very high fire danger",
+  "fireDangerNoWarning": "No active fire warning",
+  "fireDangerNoData": "Fire status unavailable",
+  "fireDangerCheckCanton": "No data from BAFU — check cantonal website",
+  "fireDangerSource": "waldbrandgefahr.ch"
 }

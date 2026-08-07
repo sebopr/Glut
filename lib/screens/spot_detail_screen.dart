@@ -12,6 +12,7 @@ import '../providers/spots_provider.dart';
 import '../services/elevation_service.dart';
 import '../theme.dart';
 import '../services/weather_service.dart';
+import '../services/fire_danger_service.dart';
 import 'widgets/spot_photos.dart';
 import '../services/coordinate_service.dart';
 import '../services/share_service.dart';
@@ -30,12 +31,15 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
   int? _elevation;
   WeatherData? _weather;
   bool _weatherLoading = true;
+  FireDangerData? _fireDanger;
+  bool _fireDangerLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadElevation();
     _loadWeather();
+    _loadFireDanger();
     AnalyticsService.logSpotView(widget.spot.id);
   }
 
@@ -91,6 +95,46 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
         _weather = weather;
         _weatherLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadFireDanger() async {
+    final danger = await FireDangerService.getDanger(
+      widget.spot.lat,
+      widget.spot.lng,
+    );
+    if (mounted) {
+      setState(() {
+        _fireDanger = danger;
+        _fireDangerLoading = false;
+      });
+    }
+  }
+
+  String _fireDangerLabel(AppLocalizations l10n) {
+    final d = _fireDanger;
+    if (d == null) return l10n.fireDangerNoData;
+    if (d.noDataForCanton) return l10n.fireDangerCheckCanton;
+    switch (d.level) {
+      case 1: return l10n.fireDangerLevel1;
+      case 2: return l10n.fireDangerLevel2;
+      case 3: return l10n.fireDangerLevel3;
+      case 4: return l10n.fireDangerLevel4;
+      case 5: return l10n.fireDangerLevel5;
+      default: return l10n.fireDangerNoWarning;
+    }
+  }
+
+  Color _fireDangerColor() {
+    final d = _fireDanger;
+    if (d == null || d.noDataForCanton) return Colors.white38;
+    switch (d.level) {
+      case 1: return GlutTheme.moss;
+      case 2: return const Color(0xFF8BC34A);
+      case 3: return Colors.orange;
+      case 4: return const Color(0xFFE64A19);
+      case 5: return Colors.red;
+      default: return Colors.white38;
     }
   }
 
@@ -479,49 +523,66 @@ class _SpotDetailScreenState extends ConsumerState<SpotDetailScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Fire ban status
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: GlutTheme.moss.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: GlutTheme.moss.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: GlutTheme.moss,
-                            shape: BoxShape.circle,
+                  // Fire danger status
+                  _fireDangerLoading
+                      ? Container(
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: GlutTheme.coal,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white10),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: GlutTheme.ember,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: _fireDangerColor().withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _fireDangerColor().withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: _fireDangerColor(),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _fireDangerLabel(l10n),
+                                      style: TextStyle(
+                                        color: _fireDangerColor(),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      l10n.fireDangerSource,
+                                      style: const TextStyle(
+                                        color: Colors.white38,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l10n.fireAllowedToday,
-                              style: const TextStyle(
-                                color: GlutTheme.moss,
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              l10n.checkLocalRegulations,
-                              style: const TextStyle(
-                                color: Colors.white38,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
 
                   const SizedBox(height: 16),
 

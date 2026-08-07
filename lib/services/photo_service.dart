@@ -53,9 +53,92 @@ class PhotoService {
         'photo_url': photoUrl,
         'device_id': deviceId,
       });
-      return true;
     } catch (e) {
       debugPrint('PhotoService.reportPhoto: $e');
+      return false;
+    }
+
+    // Best-effort: triggers the report-count check, auto-delete-at-threshold,
+    // and the email alert. Report itself already succeeded above regardless.
+    try {
+      await _supabase.functions.invoke('photo-report', body: {
+        'photo_url': photoUrl,
+        'spot_id': spotId,
+      });
+    } catch (e) {
+      debugPrint('PhotoService.reportPhoto (notify): $e');
+    }
+    return true;
+  }
+
+  /// Reported photos that are still live (not yet auto-deleted), with their
+  /// unique-device report count, for the admin "Reported" queue.
+  static Future<List<Map<String, dynamic>>> getReportedPhotos() async {
+    try {
+      final reports = await _supabase
+          .from('photo_reports')
+          .select('photo_url, spot_id, device_id');
+
+      final byUrl = <String, Map<String, dynamic>>{};
+      for (final r in (reports as List).cast<Map<String, dynamic>>()) {
+        final url = r['photo_url'] as String;
+        final entry = byUrl.putIfAbsent(url, () => {
+              'photo_url': url,
+              'spot_id': r['spot_id'],
+              'devices': <String>{},
+            });
+        (entry['devices'] as Set<String>).add(r['device_id'] as String);
+      }
+      if (byUrl.isEmpty) return [];
+
+      final live = await _supabase
+          .from('spot_photos')
+          .select('url')
+          .inFilter('url', byUrl.keys.toList());
+      final liveUrls =
+          (live as List).map((e) => e['url'] as String).toSet();
+
+      return byUrl.values
+          .where((e) => liveUrls.contains(e['photo_url']))
+          .map((e) => {
+                'photo_url': e['photo_url'],
+                'spot_id': e['spot_id'],
+                'report_count': (e['devices'] as Set<String>).length,
+              })
+          .toList()
+        ..sort((a, b) =>
+            (b['report_count'] as int).compareTo(a['report_count'] as int));
+    } catch (e) {
+      debugPrint('PhotoService.getReportedPhotos: $e');
+      return [];
+    }
+  }
+
+  /// Clears all reports for a photo without deleting it (false alarm).
+  static Future<bool> dismissReports(String photoUrl) async {
+    try {
+      await _supabase.from('photo_reports').delete().eq('photo_url', photoUrl);
+      return true;
+    } catch (e) {
+      debugPrint('PhotoService.dismissReports: $e');
+      return false;
+    }
+  }
+
+  /// Manually removes a reported photo (before it hits the auto-delete threshold).
+  static Future<bool> removeReportedPhoto(String photoUrl) async {
+    try {
+      await _supabase.from('spot_photos').delete().eq('url', photoUrl);
+      await _supabase.from('photo_reports').delete().eq('photo_url', photoUrl);
+
+      final pathMatch = RegExp(r'/storage/v1/object/public/spot-photos/(.+)')
+          .firstMatch(Uri.parse(photoUrl).path);
+      if (pathMatch != null) {
+        await _supabase.storage.from(_bucket).remove([pathMatch.group(1)!]);
+      }
+      return true;
+    } catch (e) {
+      debugPrint('PhotoService.removeReportedPhoto: $e');
       return false;
     }
   }
