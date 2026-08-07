@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../l10n/app_localizations.dart';
@@ -135,25 +136,32 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
                       ),
                     ],
                   ),
-                  // Spot pins
+                  // Spot pins (clustered when many are close together)
                   spots.when(
-                    data: (list) => MarkerLayer(
-                      markers: list
-                          .map(
-                            (spot) => Marker(
-                              point: LatLng(spot.lat, spot.lng),
-                              width: 36,
-                              height: 36,
-                              child: GestureDetector(
-                                onTap: () =>
-                                    setState(() => _selectedSpot = spot),
-                                child: _SpotPin(
-                                  selected: _selectedSpot?.id == spot.id,
+                    data: (list) => MarkerClusterLayerWidget(
+                      options: MarkerClusterLayerOptions(
+                        maxClusterRadius: 45,
+                        disableClusteringAtZoom: 16,
+                        size: const Size(36, 36),
+                        markers: list
+                            .map(
+                              (spot) => Marker(
+                                point: LatLng(spot.lat, spot.lng),
+                                width: 36,
+                                height: 36,
+                                child: GestureDetector(
+                                  onTap: () =>
+                                      setState(() => _selectedSpot = spot),
+                                  child: _SpotPin(
+                                    selected: _selectedSpot?.id == spot.id,
+                                  ),
                                 ),
                               ),
-                            ),
-                          )
-                          .toList(),
+                            )
+                            .toList(),
+                        builder: (context, markers) =>
+                            _ClusterPin(count: markers.length),
+                      ),
                     ),
                     loading: () => const MarkerLayer(markers: []),
                     error: (_, _) => const MarkerLayer(markers: []),
@@ -588,6 +596,35 @@ class _MapScreenState extends ConsumerState<MapScreen> with WidgetsBindingObserv
     _sheetController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+}
+
+class _ClusterPin extends StatelessWidget {
+  final int count;
+  const _ClusterPin({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: GlutTheme.ember,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: const [
+          BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          '$count',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
   }
 }
 
