@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/spot.dart';
+import '../services/device_id_service.dart';
 import '../services/overpass_service.dart';
+import '../services/saved_spots_service.dart';
 
 final locationProvider = StreamProvider<Position>((ref) async* {
   bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -121,18 +124,41 @@ class FavouritesNotifier extends Notifier<Set<String>> {
     final prefs = await SharedPreferences.getInstance();
     final ids = prefs.getStringList('favourites') ?? [];
     state = ids.toSet();
+
+    // Local storage is empty on a fresh install (including a reinstall on
+    // the same device) — restore from the server using the persistent
+    // device id so saved places survive an uninstall.
+    if (ids.isEmpty) {
+      await _restoreFromServer(prefs);
+    }
+  }
+
+  Future<void> _restoreFromServer(SharedPreferences prefs) async {
+    final deviceId = await DeviceIdService.getDeviceId();
+    final serverSpots = await SavedSpotsService.fetchSaved(deviceId);
+    if (serverSpots.isEmpty) return;
+
+    await prefs.setStringList(
+      'saved_spots',
+      serverSpots.map((s) => jsonEncode(s.toJson())).toList(),
+    );
+    state = serverSpots.map((s) => s.id).toSet();
+    await prefs.setStringList('favourites', state.toList());
   }
 
   Future<void> toggle(Spot spot) async {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = prefs.getStringList('saved_spots') ?? [];
+    final deviceId = await DeviceIdService.getDeviceId();
 
     if (state.contains(spot.id)) {
       jsonList.removeWhere((s) => (jsonDecode(s) as Map)['id'] == spot.id);
       state = {...state}..remove(spot.id);
+      unawaited(SavedSpotsService.remove(deviceId, spot.id));
     } else {
       jsonList.add(jsonEncode(spot.toJson()));
       state = {...state, spot.id};
+      unawaited(SavedSpotsService.save(deviceId, spot));
     }
 
     await prefs.setStringList('saved_spots', jsonList);

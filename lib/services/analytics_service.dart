@@ -1,18 +1,11 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
+import 'device_id_service.dart';
 
 class AnalyticsService {
   static final _db = Supabase.instance.client;
 
-  static Future<String> getDeviceId() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!prefs.containsKey('device_id')) {
-      await prefs.setString('device_id', const Uuid().v4());
-    }
-    return prefs.getString('device_id')!;
-  }
+  static Future<String> getDeviceId() => DeviceIdService.getDeviceId();
 
   static Future<void> logSpotView(String spotId) async {
     try {
@@ -29,8 +22,10 @@ class AnalyticsService {
   static Future<void> logSearch(String query) async {
     if (query.trim().isEmpty) return;
     try {
+      final deviceId = await getDeviceId();
       await _db.from('search_queries').insert({
         'query': query.trim().toLowerCase(),
+        'device_id': deviceId,
       });
     } catch (e) {
       debugPrint('Analytics.logSearch: $e');
@@ -39,8 +34,10 @@ class AnalyticsService {
 
   static Future<void> logEvent(String name) async {
     try {
+      final deviceId = await getDeviceId();
       await _db.from('analytics_events').insert({
         'event_name': name,
+        'device_id': deviceId,
       });
     } catch (e) {
       debugPrint('Analytics.logEvent: $e');

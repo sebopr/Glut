@@ -3,9 +3,8 @@ import 'dart:ui' show ImageFilter;
 import 'package:exif/exif.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/device_id_service.dart';
 import '../../services/photo_service.dart';
 import '../../theme.dart';
 
@@ -37,17 +36,9 @@ class _SpotPhotosState extends State<SpotPhotos> {
     _loadPhotos();
   }
 
-  Future<String> _getDeviceId() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!prefs.containsKey('device_id')) {
-      await prefs.setString('device_id', const Uuid().v4());
-    }
-    return prefs.getString('device_id')!;
-  }
-
   Future<void> _loadPhotos() async {
     if (mounted) setState(() => _loading = true);
-    final deviceId = await _getDeviceId();
+    final deviceId = await DeviceIdService.getDeviceId();
     final results = await Future.wait([
       PhotoService.getApprovedPhotos(widget.spotId),
       PhotoService.getMyPendingPhotos(widget.spotId, deviceId),
@@ -179,7 +170,7 @@ class _SpotPhotosState extends State<SpotPhotos> {
       setState(() => _uploading = true);
 
       debugPrint('📸 calling uploadPhoto');
-      final deviceId = await _getDeviceId();
+      final deviceId = await DeviceIdService.getDeviceId();
       final result = await PhotoService.uploadPhoto(
         spotId: widget.spotId,
         imageFile: File(picked.path),
@@ -234,7 +225,7 @@ class _SpotPhotosState extends State<SpotPhotos> {
           photos: _approved,
           initialIndex: index,
           spotId: widget.spotId,
-          getDeviceId: _getDeviceId,
+          getDeviceId: DeviceIdService.getDeviceId,
         ),
       ),
     );
